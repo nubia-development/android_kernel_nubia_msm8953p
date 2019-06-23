@@ -1849,9 +1849,9 @@ exit:
 static int fg_interleaved_mem_write(struct fg_chip *chip, u8 *val, u16 address,
 							int len, int offset)
 {
-
-	int rc = 0, orig_address = address;
+	int rc = 0, ret, orig_address = address;
 	u8 count = 0;
+	bool retry = false;
 
 	if (chip->fg_shutdown)
 		return -EINVAL;
