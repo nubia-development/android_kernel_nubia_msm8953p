@@ -27,6 +27,14 @@
 #include <linux/regulator/consumer.h>
 #include <linux/delay.h>
 
+//NUBIA ADD
+#ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG
+#include <linux/ctype.h>
+#define LED_MPP_DIG_IN_CTRL(base)		(base + 0x43)
+
+#endif
+//NUBIA ADD END
+
 #define WLED_MOD_EN_REG(base, n)	(base + 0x60 + n*0x10)
 #define WLED_IDAC_DLY_REG(base, n)	(WLED_MOD_EN_REG(base, n) + 0x01)
 #define WLED_FULL_SCALE_REG(base, n)	(WLED_IDAC_DLY_REG(base, n) + 0x01)
@@ -914,7 +922,7 @@ static int qpnp_mpp_set(struct qpnp_led_data *led)
 					duty_us,
 					period_us);
 			} else {
-				duty_ns = ((period_us * NSEC_PER_USEC) /
+			   duty_ns = ((period_us * NSEC_PER_USEC) /
 					LED_FULL) * led->cdev.brightness;
 				rc = pwm_config(
 					led->mpp_cfg->pwm_cfg->pwm_dev,
@@ -2207,6 +2215,13 @@ static ssize_t pwm_us_store(struct device *dev,
 	switch (led->id) {
 	case QPNP_ID_LED_MPP:
 		pwm_cfg = led->mpp_cfg->pwm_cfg;
+               //NUBIA ADD for waiting last schedule work done
+		#ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG
+		#ifdef CONFIG_NUBIA_BLINK_WHEN_SLEEP_USE_HARDWARE
+		flush_work(&led->work);
+		#endif
+		#endif
+		//NUBIA ADD END
 		break;
 	case QPNP_ID_RGB_RED:
 	case QPNP_ID_RGB_GREEN:
@@ -2243,6 +2258,111 @@ static ssize_t pwm_us_store(struct device *dev,
 	return count;
 }
 
+//NUBIA ADD
+#ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG
+static ssize_t pwm_us_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct pwm_config_data *pwm_cfg;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct qpnp_led_data *led = container_of(led_cdev, struct qpnp_led_data, cdev);
+
+	switch (led->id) {
+	case QPNP_ID_LED_MPP:
+		pwm_cfg = led->mpp_cfg->pwm_cfg;
+		break;
+	case QPNP_ID_RGB_RED:
+	case QPNP_ID_RGB_GREEN:
+	case QPNP_ID_RGB_BLUE:
+		pwm_cfg = led->rgb_cfg->pwm_cfg;
+		break;
+	case QPNP_ID_KPDBL:
+		pwm_cfg = led->kpdbl_cfg->pwm_cfg;
+		break;
+	default:
+		dev_err(&led->spmi_dev->dev,
+			"Invalid LED id type for pwm_us\n");
+		return -EINVAL;
+	}
+
+	return sprintf(buf, "%u\n", pwm_cfg->pwm_period_us);
+}
+
+static ssize_t current_ma_store(struct device *dev,
+	struct device_attribute *attr,
+	const char *buf, size_t count)
+{
+	u8 current_ma;
+	int rc;
+	u8 val;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct qpnp_led_data *led = container_of(led_cdev, struct qpnp_led_data, cdev);
+
+	rc = kstrtou8(buf, 10, &current_ma);
+	if (rc)
+		return rc;
+
+	if (current_ma < LED_MPP_CURRENT_MIN)
+		led->mpp_cfg->current_setting = LED_MPP_CURRENT_MIN;
+	else if (current_ma > LED_MPP_CURRENT_MAX)
+		led->mpp_cfg->current_setting = LED_MPP_CURRENT_MAX;
+	else
+		led->mpp_cfg->current_setting = (u8) current_ma;
+
+	switch (led->id) {
+	case QPNP_ID_LED_MPP:
+		val = (led->mpp_cfg->current_setting / LED_MPP_CURRENT_PER_SETTING) - 1;
+
+		if (val < 0)
+			val = 0;
+
+		rc = qpnp_led_masked_write(led, LED_MPP_SINK_CTRL(led->base),
+			LED_MPP_SINK_MASK, val);
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"Failed to write sink control reg\n");
+			return rc;
+		}
+		led->mpp_cfg->current_setting = (val + 1) * 5;
+		break;
+	case QPNP_ID_RGB_RED:
+	case QPNP_ID_RGB_GREEN:
+	case QPNP_ID_RGB_BLUE:
+	case QPNP_ID_KPDBL:
+	default:
+		dev_err(&led->spmi_dev->dev,
+			"Invalid LED id type for current_ma\n");
+		return -EINVAL;
+	}
+
+	qpnp_led_set(&led->cdev, led->cdev.brightness);
+	return count;
+}
+
+static ssize_t current_ma_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	u8 current_ma;
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	struct qpnp_led_data *led = container_of(led_cdev, struct qpnp_led_data, cdev);
+
+	switch (led->id) {
+	case QPNP_ID_LED_MPP:
+		current_ma = led->mpp_cfg->current_setting;
+		break;
+	case QPNP_ID_RGB_RED:
+	case QPNP_ID_RGB_GREEN:
+	case QPNP_ID_RGB_BLUE:
+	case QPNP_ID_KPDBL:
+	default:
+		dev_err(&led->spmi_dev->dev,
+			"Invalid LED id type for current_ma\n");
+		return -EINVAL;
+	}
+
+	return sprintf(buf, "%u\n", current_ma);
+}
+#endif
 static ssize_t pause_lo_store(struct device *dev,
 	struct device_attribute *attr,
 	const char *buf, size_t count)
@@ -2609,6 +2729,45 @@ restore:
 	return ret;
 }
 
+#ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG
+
+struct flash_timed_data{
+    unsigned long blink;
+	unsigned long delay_on;
+	unsigned long delay_off;
+	unsigned long brightness;
+};
+
+static ssize_t flash_timed_store(struct device *dev,
+	struct device_attribute *attr,
+	const char *buf, size_t count)
+{
+    struct flash_timed_data parameters = {0};
+    unsigned long * temp = &parameters.blink;
+    int para_count = sizeof(parameters)/sizeof(parameters.blink);
+    int i = 0; 
+    char * endp;
+    struct led_classdev *led_cdev = dev_get_drvdata(dev); 
+    for( ; i < para_count; i++){
+       while(isspace(*buf))
+	   buf++;	  
+       if(!*buf) break;
+	   *(temp++)= simple_strtoul(buf, &endp, 10);
+	   buf = endp;
+    }
+    if(parameters.blink){ 
+	   led_cdev->brightness = (int)parameters.brightness;
+	   led_blink_set(led_cdev, &parameters.delay_on, &parameters.delay_off);
+    }else{
+	   /* Stop blinking */
+	   led_set_brightness(led_cdev, parameters.brightness);
+	   led_cdev->blink_brightness = LED_OFF;
+    }
+    return count;
+}
+#else
+//NUBIA ADD END
+
 static void led_blink(struct qpnp_led_data *led,
 			struct pwm_config_data *pwm_cfg)
 {
@@ -2689,17 +2848,41 @@ static ssize_t blink_store(struct device *dev,
 	}
 	return count;
 }
+//NUBIA ADD
+#endif
+//NUBIA ADD END
 
 static DEVICE_ATTR(led_mode, 0664, NULL, led_mode_store);
 static DEVICE_ATTR(strobe, 0664, NULL, led_strobe_type_store);
+//NUBIA ADD 
+#ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG
+static DEVICE_ATTR(pwm_us, 0664, pwm_us_show, pwm_us_store);
+#else
 static DEVICE_ATTR(pwm_us, 0664, NULL, pwm_us_store);
+#endif
+//NUBIA ADD  END
 static DEVICE_ATTR(pause_lo, 0664, NULL, pause_lo_store);
 static DEVICE_ATTR(pause_hi, 0664, NULL, pause_hi_store);
 static DEVICE_ATTR(start_idx, 0664, NULL, start_idx_store);
 static DEVICE_ATTR(ramp_step_ms, 0664, NULL, ramp_step_ms_store);
 static DEVICE_ATTR(lut_flags, 0664, NULL, lut_flags_store);
 static DEVICE_ATTR(duty_pcts, 0664, NULL, duty_pcts_store);
+//NUBIA ADD 
+#ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG
+static DEVICE_ATTR(blink, 0664, NULL, flash_timed_store);
+static DEVICE_ATTR(current_ma, 0664, current_ma_show, current_ma_store);
+static struct attribute *mpp_attrs[] = {
+	&dev_attr_current_ma.attr,
+	NULL
+};
+
+static const struct attribute_group mpp_attr_group = {
+	.attrs = mpp_attrs,
+};
+#else
 static DEVICE_ATTR(blink, 0664, NULL, blink_store);
+#endif
+//NUBIA ADD END
 
 static struct attribute *led_attrs[] = {
 	&dev_attr_led_mode.attr,
@@ -2993,6 +3176,7 @@ static int qpnp_mpp_init(struct qpnp_led_data *led)
 	}
 
 	if (led->mpp_cfg->pwm_mode != MANUAL_MODE) {
+
 		rc = qpnp_pwm_init(led->mpp_cfg->pwm_cfg, led->spmi_dev,
 					led->cdev.name);
 		if (rc) {
@@ -3868,7 +4052,7 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 
 	temp = NULL;
 	while ((temp = of_get_next_child(node, temp)))
-		num_leds++;
+		num_leds++; 
 
 	if (!num_leds)
 		return -ECHILD;
@@ -3933,6 +4117,13 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 
 		led->cdev.brightness_set    = qpnp_led_set;
 		led->cdev.brightness_get    = qpnp_led_get;
+		//NUBIA ADD for turn off led when sleep
+		#ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG
+		#ifndef CONFIG_NUBIA_BLINK_WHEN_SLEEP_USE_HARDWARE
+		led->cdev.flags  =  LED_CORE_SUSPENDRESUME;
+		#endif
+		#endif
+		//NUBIA ADD END
 
 		if (strncmp(led_label, "wled", sizeof("wled")) == 0) {
 			rc = qpnp_get_config_wled(led, temp);
@@ -4035,6 +4226,23 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 		}
 
 		if (led->id == QPNP_ID_LED_MPP) {
+			//NUBIA ADD
+			#ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG 
+		   //rc = device_create_file(led->cdev.dev, &dev_attr_blink);
+		   rc = sysfs_create_group(&led->cdev.dev->kobj,
+				&blink_attr_group);
+		   if(rc){
+			   //device_remove_file(led->cdev.dev, &dev_attr_blink);
+			   goto fail_id_check;
+		   }
+			rc = sysfs_create_group(&led->cdev.dev->kobj,
+				&mpp_attr_group);
+		   if(rc){
+			   //device_remove_file(led->cdev.dev, &mpp_attr_group);
+			   goto fail_id_check;
+		   }
+			#endif
+			//NUBIA ADD END
 			if (!led->mpp_cfg->pwm_cfg)
 				break;
 			if (led->mpp_cfg->pwm_cfg->mode == PWM_MODE) {
@@ -4116,8 +4324,22 @@ static int qpnp_leds_probe(struct spmi_device *spmi)
 			if (led->turn_off_delay_ms > 0)
 				qpnp_led_turn_off(led);
 		} else
+		//NUBIA ADD
+        #ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG
+        {
 			led->cdev.brightness = LED_OFF;
-
+			//turn off led at this time , if lk turn on led
+		    qpnp_led_masked_write(led,
+					LED_MPP_EN_CTRL(led->base),
+					LED_MPP_EN_MASK,
+					LED_MPP_EN_DISABLE);
+        }
+        #else
+		//NUBIA ADD END
+          led->cdev.brightness = LED_OFF;
+		//NUBIA ADD
+        #endif
+        //NUBIA ADD END
 		parsed_leds++;
 	}
 	dev_set_drvdata(&spmi->dev, led_array);
@@ -4184,6 +4406,12 @@ static int qpnp_leds_remove(struct spmi_device *spmi)
 		case QPNP_ID_LED_MPP:
 			if (!led_array[i].mpp_cfg->pwm_cfg)
 				break;
+			#ifdef CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG 
+		        sysfs_remove_group(&led_array[i].cdev.dev->kobj,
+				&blink_attr_group);
+			sysfs_remove_group(&led_array[i].cdev.dev->\
+				kobj, &mpp_attr_group);
+			#endif
 			if (led_array[i].mpp_cfg->pwm_cfg->mode == PWM_MODE)
 				sysfs_remove_group(&led_array[i].cdev.dev->\
 					kobj, &pwm_attr_group);
