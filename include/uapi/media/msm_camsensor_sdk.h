@@ -191,6 +191,12 @@ enum msm_flash_cfg_type_t {
 	CFG_FLASH_OFF,
 	CFG_FLASH_LOW,
 	CFG_FLASH_HIGH,
+    //ZTEMT: added by congshan for front camera flash start
+	CFG_LCD_BKL_NORM,
+	CFG_LCD_BKL_LOW,
+	CFG_LCD_BKL_HIGH,
+	CFG_LCD_BKL_SET,
+	//ZTEMT: added by congshan for front camera flash end	
 };
 
 enum msm_ir_led_cfg_type_t {
@@ -242,6 +248,9 @@ enum msm_camera_i2c_operation {
 	MSM_CAM_WRITE = 0,
 	MSM_CAM_POLL,
 	MSM_CAM_READ,
+	//ZTEMT:add by yangyikun read OTP data --start
+	MSM_CAM_READ_CONTINUOUS, 
+	//ZTEMT:add by yangyikun read OTP data --end
 };
 
 struct msm_sensor_i2c_sync_params {

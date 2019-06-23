@@ -260,6 +260,7 @@ enum eeprom_cfg_type_t {
 	CFG_EEPROM_WRITE_DATA,
 	CFG_EEPROM_GET_MM_INFO,
 	CFG_EEPROM_INIT,
+	CFG_EEPROM_DO_CALIBRATION,//ZTEMT:zhouruoyu add for factory altek 3D calibration
 };
 
 struct eeprom_get_t {
