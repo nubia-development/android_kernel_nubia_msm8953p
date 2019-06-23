@@ -542,7 +542,7 @@
 	};
 
 	i2c@78b6000 {
-		wsa881x_i2c_e: wsa881x-i2c-codec@e {
+		/* wsa881x_i2c_e: wsa881x-i2c-codec@e {
 			status = "disabled";
 			compatible = "qcom,wsa881x-i2c-codec";
 			reg = <0x0e>;
@@ -617,7 +617,7 @@
 			status = "disabled";
 			compatible = "qcom,wsa881x-i2c-codec";
 			reg = <0x45>;
-		};
+		}; */
 	};
 
 	wcd9xxx_intc: wcd9xxx-irq {
