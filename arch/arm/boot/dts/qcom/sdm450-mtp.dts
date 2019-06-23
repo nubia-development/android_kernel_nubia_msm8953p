@@ -47,4 +47,3 @@
       // qcom,typec-psy-name = "typec";
 
 };
-#include NUBIA_OVERWRITE_DTSI_FILE
