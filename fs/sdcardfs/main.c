@@ -23,6 +23,12 @@
 #include <linux/types.h>
 #include <linux/parser.h>
 
+//Nubia FileObserver Begin
+#ifdef ENABLE_FILE_OBSERVER
+#include "observer.h"
+#endif
+//Nubia FileObserver End
+
 enum {
 	Opt_fsuid,
 	Opt_fsgid,
@@ -268,13 +274,13 @@ static int sdcardfs_read_super(struct super_block *sb, const char *dev_name,
 	sb_info->obbpath_s = kzalloc(PATH_MAX, GFP_KERNEL);
 	mutex_lock(&sdcardfs_super_list_lock);
 	if(sb_info->options.multiuser) {
-		setup_derived_state(sb->s_root->d_inode, PERM_PRE_ROOT, sb_info->options.fs_user_id, AID_ROOT, false);
+		setup_derived_state(d_inode(sb->s_root), PERM_PRE_ROOT, sb_info->options.fs_user_id, AID_ROOT, false, d_inode(sb->s_root));
 		snprintf(sb_info->obbpath_s, PATH_MAX, "%s/obb", dev_name);
 		/*err =  prepare_dir(sb_info->obbpath_s,
 					sb_info->options.fs_low_uid,
 					sb_info->options.fs_low_gid, 00755);*/
 	} else {
-		setup_derived_state(sb->s_root->d_inode, PERM_ROOT, sb_info->options.fs_low_uid, AID_ROOT, false);
+		setup_derived_state(d_inode(sb->s_root), PERM_ROOT, sb_info->options.fs_user_id, AID_ROOT, false, d_inode(sb->s_root));
 		snprintf(sb_info->obbpath_s, PATH_MAX, "%s/Android/obb", dev_name);
 	}
 	fix_derived_permission(sb->s_root->d_inode);
@@ -374,6 +380,12 @@ static int __init init_sdcardfs_fs(void)
 	if (err)
 		goto out;
 	err = register_filesystem(&sdcardfs_fs_type);
+
+	//Nubia FileObserver Begin
+	#ifdef ENABLE_FILE_OBSERVER
+	sdcardfs_init_file_observer();
+	#endif
+	//Nubia FileObserver End
 out:
 	if (err) {
 		sdcardfs_destroy_inode_cache();
@@ -385,6 +397,11 @@ out:
 
 static void __exit exit_sdcardfs_fs(void)
 {
+    //Nubia FileObserver Begin
+	#ifdef ENABLE_FILE_OBSERVER
+	sdcardfs_exit_file_observer();
+	#endif
+	//Nubia FileObserver End
 	sdcardfs_destroy_inode_cache();
 	sdcardfs_destroy_dentry_cache();
 	packagelist_exit();

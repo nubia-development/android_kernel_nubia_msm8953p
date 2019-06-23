@@ -238,8 +238,36 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 	lower_dir_mnt = lower_parent_path->mnt;
 
 	/* Use vfs_path_lookup to check if the dentry exists or not */
+#ifdef CONFIG_SDCARD_FS_CI_SEARCH
+	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name,
+				LOOKUP_CASE_INSENSITIVE, &lower_path);
+#else
 	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name, 0,
 				&lower_path);
+#endif
+
+	/* check for other cases */
+	if (err == -ENOENT) {
+		struct dentry *child;
+		struct dentry *match = NULL;
+		spin_lock(&lower_dir_dentry->d_lock);
+		list_for_each_entry(child, &lower_dir_dentry->d_subdirs, d_child) {
+			if (child && d_inode(child)) {
+				if (strcasecmp(child->d_name.name, name)==0) {
+					match = dget(child);
+					break;
+				}
+			}
+		}
+		spin_unlock(&lower_dir_dentry->d_lock);
+		if (match) {
+			err = vfs_path_lookup(lower_dir_dentry,
+						lower_dir_mnt,
+						match->d_name.name, 0,
+						&lower_path);
+			dput(match);
+		}
+	}
 
 	/* no error: handle positive dentries */
 	if (!err) {
@@ -287,6 +315,10 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 	this.len = strlen(name);
 	this.hash = full_name_hash(this.name, this.len);
 	lower_dentry = d_lookup(lower_dir_dentry, &this);
+	if (IS_ERR(lower_dentry))
+	{
+	    return lower_dentry;
+	}
 	if (lower_dentry)
 		goto setup_lower;
 
@@ -365,11 +397,9 @@ struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 	if (dentry->d_inode) {
 		fsstack_copy_attr_times(dentry->d_inode,
 					sdcardfs_lower_inode(dentry->d_inode));
-		/* get drived permission */
-		mutex_lock(&dentry->d_inode->i_mutex);
+		/* get derived permission */
 		get_derived_permission(parent, dentry);
 		fix_derived_permission(dentry->d_inode);
-		mutex_unlock(&dentry->d_inode->i_mutex);
 	}
 	/* update parent directory's atime */
 	fsstack_copy_attr_atime(parent->d_inode,
