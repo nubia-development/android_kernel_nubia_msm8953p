@@ -277,43 +277,35 @@ static struct dentry *__sdcardfs_lookup(struct dentry *dentry,
 	lower_dir_mnt = lower_parent_path->mnt;
 
 	/* Use vfs_path_lookup to check if the dentry exists or not */
-	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name->name, 0,
+#ifdef CONFIG_SDCARD_FS_CI_SEARCH
+	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name,
+				LOOKUP_CASE_INSENSITIVE, &lower_path);
+#else
+	err = vfs_path_lookup(lower_dir_dentry, lower_dir_mnt, name, 0,
 				&lower_path);
+#endif
+
 	/* check for other cases */
 	if (err == -ENOENT) {
-		struct file *file;
-		const struct cred *cred = current_cred();
-
-		struct sdcardfs_name_data buffer = {
-			.ctx.actor = sdcardfs_name_match,
-			.to_find = name,
-			.name = __getname(),
-			.found = false,
-		};
-
-		if (!buffer.name) {
-			err = -ENOMEM;
-			goto out;
+		struct dentry *child;
+		struct dentry *match = NULL;
+		spin_lock(&lower_dir_dentry->d_lock);
+		list_for_each_entry(child, &lower_dir_dentry->d_subdirs, d_child) {
+			if (child && d_inode(child)) {
+				if (strcasecmp(child->d_name.name, name)==0) {
+					match = dget(child);
+					break;
+				}
+			}
 		}
-		file = dentry_open(lower_parent_path, O_RDONLY, cred);
-		if (IS_ERR(file)) {
-			err = PTR_ERR(file);
-			goto put_name;
-		}
-		err = iterate_dir(file, &buffer.ctx);
-		fput(file);
-		if (err)
-			goto put_name;
-
-		if (buffer.found)
+		spin_unlock(&lower_dir_dentry->d_lock);
+		if (match) {
 			err = vfs_path_lookup(lower_dir_dentry,
 						lower_dir_mnt,
-						buffer.name, 0,
+						match->d_name.name, 0,
 						&lower_path);
-		else
-			err = -ENOENT;
-put_name:
-		__putname(buffer.name);
+			dput(match);
+		}
 	}
 
 	/* no error: handle positive dentries */
@@ -365,21 +357,20 @@ put_name:
 		goto out;
 
 	/* instatiate a new negative dentry */
-	dname.name = name->name;
-	dname.len = name->len;
-
-	/* See if the low-level filesystem might want
-	 * to use its own hash
-	 */
-	lower_dentry = d_hash_and_lookup(lower_dir_dentry, &dname);
+	this.name = name;
+	this.len = strlen(name);
+	this.hash = full_name_hash(this.name, this.len);
+	lower_dentry = d_lookup(lower_dir_dentry, &this);
 	if (IS_ERR(lower_dentry))
-		return lower_dentry;
+	{
+	    return lower_dentry;
+	}
+	if (lower_dentry)
+		goto setup_lower;
+
+	lower_dentry = d_alloc(lower_dir_dentry, &this);
 	if (!lower_dentry) {
-		/* We called vfs_path_lookup earlier, and did not get a negative
-		 * dentry then. Don't confuse the lower filesystem by forcing
-		 * one on it now...
-		 */
-		err = -ENOENT;
+		err = -ENOMEM;
 		goto out;
 	}
 
@@ -455,8 +446,7 @@ struct dentry *sdcardfs_lookup(struct inode *dir, struct dentry *dentry,
 					sdcardfs_lower_inode(dentry->d_inode));
 		/* get derived permission */
 		get_derived_permission(parent, dentry);
-		fixup_tmp_permissions(dentry->d_inode);
-		fixup_lower_ownership(dentry, dentry->d_name.name);
+		fix_derived_permission(dentry->d_inode);
 	}
 	/* update parent directory's atime */
 	fsstack_copy_attr_atime(parent->d_inode,

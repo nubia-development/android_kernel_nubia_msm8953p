@@ -23,6 +23,12 @@
 #include <linux/backing-dev.h>
 #endif
 
+//Nubia FileObserver Begin
+#ifdef ENABLE_FILE_OBSERVER
+#include "observer.h"
+#endif
+//Nubia FileObserver End
+
 static ssize_t sdcardfs_read(struct file *file, char __user *buf,
 			   size_t count, loff_t *ppos)
 {
@@ -77,6 +83,12 @@ static ssize_t sdcardfs_write(struct file *file, const char __user *buf,
 					file_inode(lower_file));
 		fsstack_copy_attr_times(dentry->d_inode,
 					file_inode(lower_file));
+
+		//Nubia FileObserver Begin
+		#ifdef ENABLE_FILE_OBSERVER
+		sdcardfs_post_file_write(file);
+		#endif
+		//Nubia FileObserver End
 	}
 
 	return err;
@@ -104,6 +116,13 @@ static long sdcardfs_unlocked_ioctl(struct file *file, unsigned int cmd,
 {
 	long err = -ENOTTY;
 	struct file *lower_file;
+	//Nubia FileObserver Begin
+    #ifdef ENABLE_FILE_OBSERVER
+	if(sdcardfs_do_fileobserver_ioctl(file, cmd, arg)) {
+		return 0;
+	}
+	#endif
+//Nubia FileObserver End
 	const struct cred *saved_cred = NULL;
 	struct dentry *dentry = file->f_path.dentry;
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
@@ -139,6 +158,13 @@ static long sdcardfs_compat_ioctl(struct file *file, unsigned int cmd,
 {
 	long err = -ENOTTY;
 	struct file *lower_file;
+	//Nubia FileObserver Begin
+    #ifdef ENABLE_FILE_OBSERVER
+	if(sdcardfs_do_fileobserver_ioctl(file, cmd, arg)) {
+		return 0;
+	}
+	#endif
+//Nubia FileObserver End
 	const struct cred *saved_cred = NULL;
 	struct dentry *dentry = file->f_path.dentry;
 	struct sdcardfs_sb_info *sbi = SDCARDFS_SB(dentry->d_sb);
@@ -252,6 +278,7 @@ static int sdcardfs_open(struct inode *inode, struct file *file)
 		goto out_err;
 	}
 
+	file->f_mode |= FMODE_NONMAPPABLE;
 	file->private_data =
 		kzalloc(sizeof(struct sdcardfs_file_info), GFP_KERNEL);
 	if (!SDCARDFS_F(file)) {
@@ -311,6 +338,12 @@ static int sdcardfs_file_release(struct inode *inode, struct file *file)
 		fput(lower_file);
 	}
 
+	//Nubia FileObserver Begin
+	#ifdef ENABLE_FILE_OBSERVER
+	sdcardfs_post_file_release(inode, file);
+	#endif
+	//Nubia FileObserver End
+
 	kfree(SDCARDFS_F(file));
 	return 0;
 }
@@ -345,6 +378,10 @@ static int sdcardfs_fasync(int fd, struct file *file, int flag)
 		err = lower_file->f_op->fasync(fd, lower_file, flag);
 
 	return err;
+}
+static struct file *sdcardfs_get_lower_file(struct file *f)
+{
+	return sdcardfs_lower_file(f);
 }
 
 /*
@@ -442,6 +479,7 @@ const struct file_operations sdcardfs_main_fops = {
 	.fasync		= sdcardfs_fasync,
 	.read_iter	= sdcardfs_read_iter,
 	.write_iter	= sdcardfs_write_iter,
+	.get_lower_file = sdcardfs_get_lower_file,
 };
 
 /* trimmed directory options */
@@ -458,4 +496,5 @@ const struct file_operations sdcardfs_dir_fops = {
 	.flush		= sdcardfs_flush,
 	.fsync		= sdcardfs_fsync,
 	.fasync		= sdcardfs_fasync,
+	.get_lower_file = sdcardfs_get_lower_file,
 };
