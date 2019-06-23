@@ -56,6 +56,10 @@
 #include "mdss_mdp.h"
 #include "mdp3_ctrl.h"
 
+#ifdef CONFIG_NUBIA_LCD_DISP_PREFERENCE
+#include "nubia_disp_preference.h"
+#endif
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
 #else
@@ -122,6 +126,11 @@ static int mdss_fb_send_panel_event(struct msm_fb_data_type *mfd,
 					int event, void *arg);
 static void mdss_fb_set_mdp_sync_pt_threshold(struct msm_fb_data_type *mfd,
 		int type);
+
+#ifdef CONFIG_NUBIA_LCD_BACKLIGHT_CURVE
+static int nubia_backlight_covert(struct msm_fb_data_type *mfd, int value);
+#endif
+
 void mdss_fb_no_update_notify_timer_cb(unsigned long data)
 {
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)data;
@@ -281,6 +290,14 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
 	int bl_lvl;
 
+#ifdef CONFIG_NUBIA_CABC_LOW_BRIGHTNESS
+        int value_tmp;
+        struct mdss_panel_data *pdata = dev_get_platdata(&mfd->pdev->dev);
+        struct mdss_dsi_ctrl_pdata *ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+                                panel_data);
+        value_tmp = value;
+#endif
+
 	if (mfd->boot_notification_led) {
 		led_trigger_event(mfd->boot_notification_led, 0);
 		mfd->boot_notification_led = NULL;
@@ -289,10 +306,14 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 	if (value > mfd->panel_info->brightness_max)
 		value = mfd->panel_info->brightness_max;
 
+#ifdef CONFIG_NUBIA_LCD_BACKLIGHT_CURVE
+	bl_lvl = nubia_backlight_covert(mfd, value);
+#else
 	/* This maps android backlight level 0 to 255 into
 	   driver backlight level 0 to bl_max with rounding */
 	MDSS_BRIGHT_TO_BL(bl_lvl, value, mfd->panel_info->bl_max,
 				mfd->panel_info->brightness_max);
+#endif
 
 	if (!bl_lvl && value)
 		bl_lvl = 1;
@@ -303,6 +324,13 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 		mdss_fb_set_backlight(mfd, bl_lvl);
 		mutex_unlock(&mfd->bl_lock);
 	}
+
+#ifdef CONFIG_NUBIA_CABC_LOW_BRIGHTNESS
+        if(ctrl_pdata->nubia_mdss_dsi_cabc_low_bl > 0)
+        {
+                brightness_cabc_set(value_tmp);
+        }
+#endif
 }
 
 static struct led_classdev backlight_led = {
@@ -1199,6 +1227,32 @@ static int mdss_fb_init_panel_modes(struct msm_fb_data_type *mfd,
 	return 0;
 }
 
+#ifdef CONFIG_NUBIA_LCD_BACKLIGHT_CURVE
+static int nubia_backlight_covert(struct msm_fb_data_type *mfd, int value)
+{
+	u32 bl_lvl;
+
+	if(!mfd)
+		return -EINVAL;
+
+	/**
+	 *bl_lvl = (value^2) /(backlight_led.max_brightness^2) * (bl_max - bl_min)
+	 */
+	if(value > 0){
+		bl_lvl = value * (mfd->panel_info->bl_max -mfd->panel_info->bl_min);
+		do_div(bl_lvl, backlight_led.max_brightness);
+		bl_lvl = value *bl_lvl;
+		do_div(bl_lvl, backlight_led.max_brightness);
+		bl_lvl += mfd->panel_info->bl_min;
+	}else{
+		bl_lvl = 0;
+	}
+
+	pr_info("value:%d nubia backlight value = %d\n",value, bl_lvl);
+	return bl_lvl;
+}
+#endif
+
 static int mdss_fb_probe(struct platform_device *pdev)
 {
 	struct msm_fb_data_type *mfd = NULL;
@@ -1240,8 +1294,12 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	mfd->ext_ad_ctrl = -1;
 	if (mfd->panel_info && mfd->panel_info->brightness_max > 0)
+#ifdef CONFIG_NUBIA_LCD_BACKLIGHT_CURVE
+		mfd->bl_level = nubia_backlight_covert(mfd, backlight_led.brightness);
+#else
 		MDSS_BRIGHT_TO_BL(mfd->bl_level, backlight_led.brightness,
 		mfd->panel_info->bl_max, mfd->panel_info->brightness_max);
+#endif
 	else
 		mfd->bl_level = 0;
 
