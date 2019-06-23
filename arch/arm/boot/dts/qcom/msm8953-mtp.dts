@@ -31,7 +31,7 @@
 		qcom,batt-id-range-pct = <15>;
 		#include "batterydata-itech-3000mah.dtsi"
 		#include "batterydata-ascent-3450mAh.dtsi"
-		#include "batterydata-ztemt-4v4-5000mah.dtsi"
+		#include "batterydata-ztemt-4v4-4000mah.dtsi"
 	};
 };
 
@@ -55,6 +55,7 @@
     qcom,thermal-coefficients = [EC 85 75 4A FC 35];
     qcom,hold-soc-while-full;
     qcom,ext-sense-type;
+
 };
 
 &pmi8950_charger {
@@ -65,10 +66,9 @@
     qcom,resume-delta-mv = <50>;    
 
     qcom,charging-timeout-mins = <768>;
-    qcom,fastchg-current-ma = <3000>;
+    qcom,fastchg-current-ma = <2000>;
     qcom,fastchg-current-comp = <250>; //add jeita control charge current
+
       // qcom,external-typec;
       // qcom,typec-psy-name = "typec";
 };
-
-#include NUBIA_OVERWRITE_DTSI_FILE
