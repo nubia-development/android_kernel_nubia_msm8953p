@@ -13,9 +13,7 @@
 
 /dts-v1/;
 
-#include "msm8953.dtsi"
-#include "msm-pmi8950.dtsi"
-#include "msm8953-mtp.dtsi"
+#include "nubia/nubia_common/head.dtsi"
 #include "msm8953-pmi8950.dtsi"
 #include "nubia/NX608J/head.dtsi"
 //#include "msm8953-camera-sensor-mtp.dtsi"   //delete by ZTEMT kangxiong to include Nubia camera dts

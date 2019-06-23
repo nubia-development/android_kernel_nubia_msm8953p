@@ -1,0 +1,18 @@
+/*
+ * nubia msm8953 common overwrite dts
+ */
+
+
+
+#include "msm8953.dtsi"
+#include "msm-pmi8950.dtsi"
+#include "msm8953-mtp.dtsi"
+
+#include "msm-audio.dtsi"
+#include "msm-pm8953.dtsi"
+#include "msm8953-audio-mtp.dtsi"
+#include "msm8953-audio.dtsi"
+
+
+#include "msm8953-pinctrl.dtsi"
+
