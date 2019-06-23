@@ -169,6 +169,7 @@ static int mmc_queue_thread(void *d)
 			set_current_state(TASK_RUNNING);
 			cmd_flags = req ? req->cmd_flags : 0;
 			mq->issue_fn(mq, req);
+			cond_resched();
 			if (test_bit(MMC_QUEUE_NEW_REQUEST, &mq->flags)) {
 				clear_bit(MMC_QUEUE_NEW_REQUEST, &mq->flags);
 				continue; /* fetch again */
