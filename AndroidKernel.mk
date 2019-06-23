@@ -92,6 +92,10 @@ TARGET_PREBUILT_INT_KERNEL := $(KERNEL_OUT)/arch/$(KERNEL_ARCH)/boot/zImage
 endif
 endif
 
+#nubia: Use nubia dts
+NUBIA_DTS_NAME := $(NUBIA_DTS_NAME)
+export NUBIA_DTS_NAME
+
 ifeq ($(TARGET_KERNEL_APPEND_DTB), true)
 $(info Using appended DTB)
 TARGET_PREBUILT_INT_KERNEL := $(TARGET_PREBUILT_INT_KERNEL)-dtb
