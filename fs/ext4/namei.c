@@ -30,6 +30,10 @@
 #include <linux/time.h>
 #include <linux/fcntl.h>
 #include <linux/stat.h>
+#ifdef CONFIG_SDCARD_FS_CI_SEARCH
+#include <linux/namei.h>
+#include <linux/dcache.h>
+#endif
 #include <linux/string.h>
 #include <linux/quotaops.h>
 #include <linux/buffer_head.h>
