@@ -18,7 +18,7 @@
 
 #define SET_DELAY (2 * HZ)
 #define PROC_AWAKE_ID 12 /* 12th bit */
-static int slst_gpio_base_id;
+int slst_gpio_base_id;//nubia for PR00430974 ipc00000fc_android.bg keep lock
 
 /**
  * sleepstate_pm_notifier() - PM notifier callback function.
@@ -34,11 +34,11 @@ static int sleepstate_pm_notifier(struct notifier_block *nb,
 {
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
-		gpio_set_value(slst_gpio_base_id + PROC_AWAKE_ID, 0);
+		//gpio_set_value(slst_gpio_base_id + PROC_AWAKE_ID, 0);//nubia for PR00430974 ipc00000fc_android.bg keep lock
 		break;
 
 	case PM_POST_SUSPEND:
-		gpio_set_value(slst_gpio_base_id + PROC_AWAKE_ID, 1);
+		//gpio_set_value(slst_gpio_base_id + PROC_AWAKE_ID, 1);//nubia for PR00430974 ipc00000fc_android.bg keep lock
 		break;
 	}
 	return NOTIFY_DONE;

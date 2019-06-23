@@ -27,7 +27,7 @@
 
 #include "rpm_stats.h"
 
-#define RPM_MASTERS_BUF_LEN 400
+#define RPM_MASTERS_BUF_LEN 500  // zhangqingzhi 20180103 extended from 400 to 500 in order to  woodpecker get MPSS numshutdown.
 
 #define SNPRINTF(buf, size, format, ...) \
 	do { \
