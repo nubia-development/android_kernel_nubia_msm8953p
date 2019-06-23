@@ -59,6 +59,7 @@ static struct workqueue_struct *power_off_alarm_workqueue;
 static struct rtc_timer		rtctimer;
 static struct rtc_device	*rtcdev;
 static DEFINE_SPINLOCK(rtcdev_lock);
+static struct alarm init_alarm;
 //larks add for power off alarm start
 #ifdef CONFIG_NUBIA_FEATURE_POWER_OFF_CHARGE_MODE_ALARM
 #include <linux/reboot.h>
@@ -94,12 +95,43 @@ static enum alarmtimer_restart init_alarm_handle(struct alarm *alarm,ktime_t now
 }
 #endif
 //larks add for power off alarm end
+
+/**
+ * power_on_alarm_init - Init power on alarm value
+ *
+ * Read rtc alarm value after device booting up and add this alarm
+ * into alarm queue.
+ */
+void power_on_alarm_init(void)
+{
+	struct rtc_wkalrm rtc_alarm;
+	struct rtc_time rt;
+	unsigned long alarm_time;
+	struct rtc_device *rtc;
+	ktime_t alarm_ktime;
+
+	rtc = alarmtimer_get_rtcdev();
+
+	if (!rtc)
+		return;
+
+	rtc_read_alarm(rtc, &rtc_alarm);
+	rt = rtc_alarm.time;
+
+	rtc_tm_to_time(&rt, &alarm_time);
+
+	if (alarm_time) {
+		alarm_ktime = ktime_set(alarm_time, 0);
 //larks add for power off alarm start
 #ifdef CONFIG_NUBIA_FEATURE_POWER_OFF_CHARGE_MODE_ALARM
                 alarm_init(&init_alarm, ALARM_POWEROFF_REALTIME, init_alarm_handle);
 #else
+		alarm_init(&init_alarm, ALARM_POWEROFF_REALTIME, NULL);
 #endif
 //larks add for power off alarm end
+		alarm_start(&init_alarm, alarm_ktime);
+	}
+}
 static struct mutex power_on_alarm_lock;
 
 /**
