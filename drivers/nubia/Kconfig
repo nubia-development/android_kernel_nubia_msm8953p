@@ -71,3 +71,46 @@ endif
 endif
 
 endmenu
+
+# Nubia configuration options
+
+config MACH_NUBIA
+    bool "NUBIA device"
+    depends on ARCH_MSM
+    help
+      Support for Nubia products
+
+config MACH_NUBIA_MSM8953
+    bool "NUBIA MSM8953"
+    depends on ARCH_MSM8953
+    select MACH_NUBIA
+    help
+      Support for MSM8953 Nubia variants
+
+menu "Nubia board selection"
+
+config MACH_NUBIA_NX612J
+    bool "NUBIA_NX612J board"
+    select MACH_NUBIA_MSM8953
+    help
+      Support for Nubia V18 variant
+
+config MACH_NUBIA_NX608J
+    bool "NUBIA_NX608J board"
+    select MACH_NUBIA_MSM8953
+    help
+      Support for Nubia N3(OPEN) variant
+
+config MACH_NUBIA_NX617J
+    bool "NUBIA_NX617J board"
+    select MACH_NUBIA_MSM8953
+    help
+      Support for Nubia N3(CMCC) variant
+
+config MACH_NUBIA_NX618J
+    bool "NUBIA_NX618J board"
+    select MACH_NUBIA_MSM8953
+    help
+      Support for Nubia N3(CUCC) variant
+
+endmenu
