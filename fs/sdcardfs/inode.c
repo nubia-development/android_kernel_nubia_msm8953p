@@ -21,6 +21,11 @@
 #include "sdcardfs.h"
 #include <linux/fs_struct.h>
 #include <linux/ratelimit.h>
+//Nubia FileObserver Begin
+#ifdef ENABLE_FILE_OBSERVER
+#include "observer.h"
+#endif
+//Nubia FileObserver End
 
 const struct cred *override_fsids(struct sdcardfs_sb_info *sbi,
 		struct sdcardfs_inode_data *data)
@@ -111,6 +116,13 @@ static int sdcardfs_create(struct inode *dir, struct dentry *dentry,
 		goto out;
 	fsstack_copy_attr_times(dir, sdcardfs_lower_inode(dir));
 	fsstack_copy_inode_size(dir, lower_parent_dentry->d_inode);
+
+    //Nubia FileObserver Begin
+    #ifdef ENABLE_FILE_OBSERVER
+    sdcardfs_post_file_create(dentry);
+    #endif
+    //Nubia FileObserver End
+
 	fixup_lower_ownership(dentry, dentry->d_name.name);
 
 out:
@@ -172,6 +184,12 @@ static int sdcardfs_unlink(struct inode *dir, struct dentry *dentry)
 		  sdcardfs_lower_inode(dentry->d_inode)->i_nlink);
 	dentry->d_inode->i_ctime = dir->i_ctime;
 	d_drop(dentry); /* this is needed, else LTP fails (VFS won't do it) */
+
+    //Nubia FileObserver Begin
+    #ifdef ENABLE_FILE_OBSERVER
+    sdcardfs_post_file_unlink(dir, dentry);
+    #endif
+    //Nubia FileObserver End
 out:
 	unlock_dir(lower_dir_dentry);
 	dput(lower_dentry);
@@ -325,6 +343,12 @@ static int sdcardfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode
 			goto out;
 		}
 	}
+
+    //Nubia FileObserver Begin
+    #ifdef ENABLE_FILE_OBSERVER
+    sdcardfs_post_file_mkdir(dir, dentry);
+    #endif
+    //Nubia FileObserver End
 out:
 	task_lock(current);
 	current->fs = saved_fs;
@@ -379,6 +403,11 @@ static int sdcardfs_rmdir(struct inode *dir, struct dentry *dentry)
 	fsstack_copy_inode_size(dir, lower_dir_dentry->d_inode);
 	set_nlink(dir, lower_dir_dentry->d_inode->i_nlink);
 
+    //Nubia FileObserver Begin
+    #ifdef ENABLE_FILE_OBSERVER
+    sdcardfs_post_file_rmdir(dir, dentry);
+    #endif
+    //Nubia FileObserver End
 out:
 	unlock_dir(lower_dir_dentry);
 	sdcardfs_put_real_lower(dentry, &lower_path);
@@ -455,6 +484,11 @@ static int sdcardfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	fixup_tmp_permissions(old_dentry->d_inode);
 	fixup_lower_ownership(old_dentry, new_dentry->d_name.name);
 	d_invalidate(old_dentry); /* Can't fixup ownership recursively :( */
+    //Nubia FileObserver Begin
+    #ifdef ENABLE_FILE_OBSERVER
+    sdcardfs_post_file_rename(old_dir, old_dentry, new_dir, new_dentry);
+    #endif
+    //Nubia FileObserver End
 out:
 	unlock_rename(lower_old_dir_dentry, lower_new_dir_dentry);
 	dput(lower_old_dir_dentry);
