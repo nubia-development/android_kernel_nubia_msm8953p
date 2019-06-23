@@ -888,6 +888,9 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	/* simulate press event in case release event occured
 	 * without a press event
 	 */
+	//NUBIA ADD FOR GET LOG TO PRINT POWER-KEY PRESSING
+	dev_err(&pon->spmi->dev, "qpnp_pon_input_dispatch pon_type=%u,old_state=%u,key_status=%u\n",pon_type,cfg->old_state,key_status);
+	//NUBIA ADD END
 	if (!cfg->old_state && !key_status) {
 		input_report_key(pon->pon_input, cfg->key_code, 1);
 		input_sync(pon->pon_input);
