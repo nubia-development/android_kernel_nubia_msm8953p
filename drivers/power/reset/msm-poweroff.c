@@ -37,7 +37,13 @@
 #define EMERGENCY_DLOAD_MAGIC2    0xC67E4350
 #define EMERGENCY_DLOAD_MAGIC3    0x77777777
 #define EMMC_DLOAD_TYPE		0x2
-
+//larks add for panic mode start
+/* this flag must be the same as in bootable/bootloader/lk/app/aboot/aboot.c */
+#ifdef CONFIG_NUBIA_PANIC_BOOTMODE
+#define PANIC_HARD_RESET_MODE  0x07
+#define PANIC_MODE                0x77665523
+#endif
+//larks add for panic mode end
 #define SCM_IO_DISABLE_PMIC_ARBITER	1
 #define SCM_IO_DEASSERT_PS_HOLD		2
 #define SCM_WDOG_DEBUG_BOOT_PART	0x9
@@ -239,7 +245,15 @@ void msm_set_restart_mode(int mode)
 	restart_mode = mode;
 }
 EXPORT_SYMBOL(msm_set_restart_mode);
-
+//larks add for keyreset start
+#ifdef CONFIG_NUBIA_INPUT_KEYRESET
+void msm_set_dload_mode(int mode)
+{
+	download_mode = mode;
+}
+EXPORT_SYMBOL(msm_set_dload_mode);
+#endif
+//larks add for keyreset end
 /*
  * Force the SPMI PMIC arbiter to shutdown so that no more SPMI transactions
  * are sent from the MSM to the PMIC.  This is required in order to avoid an
@@ -279,6 +293,7 @@ static void msm_restart_prepare(const char *cmd)
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
 
+	printk(KERN_EMERG "nubia: %s:%d: download_mode=%x,in_panic=%x,restart_mode=%x\n",__func__,__LINE__,download_mode,in_panic,restart_mode);
 	if (qpnp_pon_check_hard_reset_stored()) {
 		/* Set warm reset as true when device is in dload mode */
 		if (get_dload_mode() ||
@@ -286,9 +301,15 @@ static void msm_restart_prepare(const char *cmd)
 			!strcmp(cmd, "edl")))
 			need_warm_reset = true;
 	} else {
-		need_warm_reset = (get_dload_mode() ||
-				((cmd != NULL && cmd[0] != '\0') &&
-				strcmp(cmd, "userrequested")));
+	//larks add for panic mode start
+		#ifdef CONFIG_NUBIA_PANIC_BOOTMODE
+			need_warm_reset = (get_dload_mode() ||
+			(cmd != NULL && cmd[0] != '\0') || in_panic);
+		#else
+			need_warm_reset = (get_dload_mode() ||
+					(cmd != NULL && cmd[0] != '\0'));
+		#endif
+	//larks add for panic mode end
 	}
 
 	/* Hard reset the PMIC unless memory contents must be maintained. */
@@ -336,7 +357,18 @@ static void msm_restart_prepare(const char *cmd)
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
+//larks add for panic mode start
+#ifdef CONFIG_NUBIA_PANIC_BOOTMODE
+	if (in_panic)
+	{
+		printk(KERN_EMERG "%s:%d: NUBIA SET PANIC HARD REBOOT REASON\n",__func__,__LINE__);
+		qpnp_pon_set_restart_reason(PANIC_HARD_RESET_MODE);
 
+		printk(KERN_EMERG "%s:%d: NUBIA SET PANIC REBOOT REASON\n",__func__,__LINE__);
+		__raw_writel(PANIC_MODE, restart_reason);
+	}
+#endif
+//larks add for panic mode end
 	flush_cache_all();
 
 	/*outer_flush_all is not supported by 64bit kernel*/

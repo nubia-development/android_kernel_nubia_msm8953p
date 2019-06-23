@@ -14,6 +14,7 @@ config POWER_SUPPLY_DEBUG
 	  Say Y here to enable debugging messages for power supply class
 	  and drivers.
 
+
 config PDA_POWER
 	tristate "Generic PDA/phone power driver"
 	depends on !S390

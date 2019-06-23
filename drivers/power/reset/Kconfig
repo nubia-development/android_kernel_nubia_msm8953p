@@ -83,7 +83,13 @@ config POWER_RESET_MSM
 	depends on ARCH_MSM || ARCH_QCOM
 	depends on POWER_RESET
 	help
-	  Power off and restart support for Qualcomm boards.
+#larks add for panic
+config NUBIA_PANIC_BOOTMODE	
+	bool "ztemt panic bootmode"	
+	depends on POWER_RESET_MSM
+	default n
+	help
+	ztemt panic bootmode.	  Power off and restart support for Qualcomm boards.
 
 config MSM_DLOAD_MODE
 	bool "Qualcomm download mode"
