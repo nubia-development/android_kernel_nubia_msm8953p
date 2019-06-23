@@ -34,6 +34,13 @@
 
 #define VSYNC_DELAY msecs_to_jiffies(17)
 
+#ifdef CONFIG_NUBIA_LCD_DISP_PREFERENCE
+#include "nubia_disp_preference.h"
+int cabc_panel_state = 1;
+#endif
+
+int jdi_panel_class_id = -1;
+
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
 void mdss_dsi_panel_pwm_cfg(struct mdss_dsi_ctrl_pdata *ctrl)
@@ -210,6 +217,24 @@ static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+#ifdef CONFIG_NUBIA_LCD_DISP_PREFERENCE
+int nubia_mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds)
+{
+	int ret = 0;
+	struct mdss_panel_info *pinfo;
+	pinfo = &(ctrl->panel_data.panel_info);
+	if (cabc_panel_state == 1) {
+		mdss_dsi_panel_cmds_send(ctrl,pcmds,CMD_REQ_COMMIT);
+		ret = 0;
+		pr_debug("nubia lcd disp func");
+	} else {
+		pr_err("nubia lcd disp not ready");
+		ret = -1;
+	}
+	return ret;
+}
+#endif
 static char led_pwm1[2] = {0x51, 0x0};	/* DTYPE_DCS_WRITE1 */
 static struct dsi_cmd_desc backlight_cmd = {
 	{DTYPE_DCS_WRITE1, 1, 0, 0, 1, sizeof(led_pwm1)},
@@ -486,7 +511,12 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			usleep_range(100, 110);
 			gpio_free(ctrl_pdata->disp_en_gpio);
 		}
+
+#ifdef CONFIG_NUBIA_SUSPEND_RESET_PIN_STATE
+		gpio_set_value((ctrl_pdata->rst_gpio), pdata->panel_info.suspend_rst_state);
+#else
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
+#endif
 		gpio_free(ctrl_pdata->rst_gpio);
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
@@ -783,6 +813,7 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 {
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
+	static u32 last_level = -1;
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -836,6 +867,20 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		pr_err("%s: Unknown bl_ctrl configuration\n",
 			__func__);
 		break;
+	}
+	if(last_level == -1){
+		last_level = 0;
+		return;
+	}
+	if(bl_level > 0)
+		cabc_panel_state = 1;
+	else
+		cabc_panel_state = 0;
+	if(last_level == 0 || bl_level == 0){
+		pr_info("%s: set bl level: %d\n", __func__,bl_level);
+		last_level = bl_level;
+		if (bl_level != 0)
+			nubia_disp_preference();
 	}
 }
 
@@ -1698,8 +1743,10 @@ static bool mdss_dsi_cmp_panel_reg_v2(struct mdss_dsi_ctrl_pdata *ctrl)
 	for (j = 0; j < ctrl->groups; ++j) {
 		for (i = 0; i < len; ++i) {
 			if (ctrl->return_buf[i] !=
-				ctrl->status_value[group + i])
+				ctrl->status_value[group + i]) {
+				pr_info("%s ctrl->return_buf[%d]:%x\n", __func__, i, ctrl->return_buf[i]);
 				break;
+			}
 		}
 
 		if (i == len)
@@ -2446,6 +2493,35 @@ static int mdss_dsi_panel_timing_from_dt(struct device_node *np,
 	return 0;
 }
 
+
+static void nubia_jdi_panel_config_res_properties(struct device_node *np,
+	struct dsi_panel_timing *pt)
+{
+	pr_info("%s jdi_panel_class_id:%d\n", __func__, jdi_panel_class_id);
+	switch (jdi_panel_class_id) {
+	case 0x0:/*jdi es1 glass*/
+		mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
+			"qcom,mdss-dsi-on-command",
+			"qcom,mdss-dsi-on-command-state");
+		break;
+	case 0x1:/*jdi es2 glass*/
+		mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
+			"qcom,mdss-dsi-on-command-es2",
+			"qcom,mdss-dsi-on-command-state");
+		break;
+	case 0x2:/*jdi pp glass*/
+		mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
+			"qcom,mdss-dsi-on-command-pp",
+			"qcom,mdss-dsi-on-command-state");
+		break;
+	default:
+		mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
+			"qcom,mdss-dsi-on-command-pp",
+			"qcom,mdss-dsi-on-command-state");
+		pr_err("invalid jdi_panel_class_id:%d\n", jdi_panel_class_id);
+	}
+}
+
 static int  mdss_dsi_panel_config_res_properties(struct device_node *np,
 		struct dsi_panel_timing *pt,
 		struct mdss_panel_data *panel_data,
@@ -2455,9 +2531,12 @@ static int  mdss_dsi_panel_config_res_properties(struct device_node *np,
 
 	mdss_dsi_parse_roi_alignment(np, pt);
 
-	mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
-		"qcom,mdss-dsi-on-command",
-		"qcom,mdss-dsi-on-command-state");
+	if (strcmp(panel_data->panel_info.panel_name, "jdi td4310 1080 2160 5p99 video dsi panel") == 0)
+		nubia_jdi_panel_config_res_properties(np,pt);
+	else
+		mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
+			"qcom,mdss-dsi-on-command",
+			"qcom,mdss-dsi-on-command-state");
 
 	mdss_dsi_parse_dcs_cmds(np, &pt->post_panel_on_cmds,
 		"qcom,mdss-dsi-post-panel-on-command", NULL);
@@ -2598,6 +2677,14 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	const char *data;
 	static const char *pdest;
 	struct mdss_panel_info *pinfo = &(ctrl_pdata->panel_data.panel_info);
+
+#if defined CONFIG_NUBIA_LCD_DISP_PREFERENCE || defined CONFIG_NUBIA_LCD_BACKLIGHT_CURVE
+        int i;
+#endif
+
+#if defined CONFIG_NUBIA_LCD_DISP_PREFERENCE
+        u32 colortmp[3];
+#endif
 
 	if (mdss_dsi_is_hw_config_split(ctrl_pdata->shared_data))
 		pinfo->is_split_display = true;
@@ -2799,6 +2886,11 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	mdss_dsi_parse_reset_seq(np, pinfo->rst_seq, &(pinfo->rst_seq_len),
 		"qcom,mdss-dsi-reset-sequence");
 
+#ifdef CONFIG_NUBIA_SUSPEND_RESET_PIN_STATE
+	rc = of_property_read_u32(np, "nubia,suspend-reset-pin-state", &tmp);
+	pinfo->suspend_rst_state = (!rc ? tmp : 0);
+#endif
+
 	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->off_cmds,
 		"qcom,mdss-dsi-off-command", "qcom,mdss-dsi-off-command-state");
 
@@ -2815,6 +2907,166 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	rc = of_property_read_u32(np, "qcom,adjust-timer-wakeup-ms", &tmp);
 	pinfo->adjust_timer_delay_ms = (!rc ? tmp : 0);
+
+#ifdef CONFIG_NUBIA_CABC_LOW_BRIGHTNESS
+        rc = of_property_read_u32(np, "nubia,mdss-dsi-cabc-low-bl", &tmp);
+        ctrl_pdata->nubia_mdss_dsi_cabc_low_bl = (!rc ? tmp : 0);
+#endif
+
+#ifdef CONFIG_NUBIA_LCD_DISP_PREFERENCE
+	/* colortmp start */
+	rc = of_property_read_u32_array(np, "nubia,mdss-dsi-colortmp-warm", colortmp, 3);
+	if (rc) {
+		pr_err("%s:%d, error reading nubia,mdss-dsi-colortmp-warm, rc = %d\n",
+			__func__, __LINE__, rc);
+		ctrl_pdata->nubia_mdp_colortmp_warm.defult = 1;
+	} else {
+		ctrl_pdata->nubia_mdp_colortmp_warm.red = colortmp[0];
+		ctrl_pdata->nubia_mdp_colortmp_warm.green = colortmp[1];
+		ctrl_pdata->nubia_mdp_colortmp_warm.blue = colortmp[2];
+		ctrl_pdata->nubia_mdp_colortmp_warm.defult = 0;
+		for (i = 0; i < 3; i++)
+			pr_debug("[LCD] warm colortmp[%d]=%x",i,colortmp[i]);
+	}
+	rc = of_property_read_u32_array(np, "nubia,mdss-dsi-colortmp-natural", colortmp, 3);
+	if (rc) {
+		pr_err("%s:%d, error reading nubia,mdss-dsi-colortmp-natural, rc = %d\n",
+			__func__, __LINE__, rc);
+		ctrl_pdata->nubia_mdp_colortmp_natural.defult = 1;
+	} else {
+		ctrl_pdata->nubia_mdp_colortmp_natural.red = colortmp[0];
+		ctrl_pdata->nubia_mdp_colortmp_natural.green = colortmp[1];
+		ctrl_pdata->nubia_mdp_colortmp_natural.blue = colortmp[2];
+		ctrl_pdata->nubia_mdp_colortmp_natural.defult = 0;
+		for (i = 0; i < 3; i++)
+			pr_debug("[LCD] natural colortmp[%d]=%x",i,colortmp[i]);
+	}
+	rc = of_property_read_u32_array(np, "nubia,mdss-dsi-colortmp-cool", colortmp, 3);
+	if (rc) {
+		pr_err("%s:%d, error reading nubia,mdss-dsi-colortmp-cool, rc = %d\n",
+			__func__, __LINE__, rc);
+		ctrl_pdata->nubia_mdp_colortmp_cool.defult = 1;
+	} else {
+		ctrl_pdata->nubia_mdp_colortmp_cool.red = colortmp[0];
+		ctrl_pdata->nubia_mdp_colortmp_cool.green = colortmp[1];
+		ctrl_pdata->nubia_mdp_colortmp_cool.blue = colortmp[2];
+		ctrl_pdata->nubia_mdp_colortmp_cool.defult = 0;
+		for (i = 0; i < 3; i ++)
+			pr_debug("[LCD] cool colortmp[%d]=%x",i,colortmp[i]);
+	}
+
+	rc = of_property_read_u32(np, "nubia,colortmp-adjustable-blue", &tmp);
+		ctrl_pdata->nubia_colortmp_adjustable_blue= (!rc ? tmp : 0x3f);
+
+	rc = of_property_read_u32(np, "nubia,colortmp-adjustable-red", &tmp);
+		ctrl_pdata->nubia_colortmp_adjustable_red= (!rc ? tmp : 0x3f);
+	/* colortmp end */
+
+	/* color enhance start */
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cmds_off,
+		"nubia,mdss-dsi-ce-command-off", "nubia,mdss-dsi-ce-command-state");
+	if (ctrl_pdata->ce_cmds_off.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-ce-command-off\n");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cmds_soft,
+		"nubia,mdss-dsi-ce-command-soft", "nubia,mdss-dsi-ce-command-state");
+	if (ctrl_pdata->ce_cmds_soft.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-ce-command-soft\n");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cmds_std,
+		"nubia,mdss-dsi-ce-command-std", "nubia,mdss-dsi-ce-command-state");
+	if (ctrl_pdata->ce_cmds_soft.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-ce-command-std\n");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cmds_glow,
+		"nubia,mdss-dsi-ce-command-glow", "nubia,mdss-dsi-ce-command-state");
+	if(ctrl_pdata->ce_cmds_soft.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-ce-command-glow\n");
+	/* color enhance end */
+
+	/* cabc start */
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->cabc_cmds_off,
+		"nubia,mdss-dsi-cabc-command-off", "nubia,mdss-dsi-cabc-command-state");
+	if(ctrl_pdata->cabc_cmds_off.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-cabc-command-off\n");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->cabc_cmds_level1,
+		"nubia,mdss-dsi-cabc-command-level1", "nubia,mdss-dsi-cabc-command-state");
+	if(ctrl_pdata->cabc_cmds_level1.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-cabc-command-level1\n");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->cabc_cmds_level2,
+		"nubia,mdss-dsi-cabc-command-level2", "nubia,mdss-dsi-cabc-command-state");
+	if(ctrl_pdata->cabc_cmds_level2.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-cabc-command-level2\n");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->cabc_cmds_level3,
+		"nubia,mdss-dsi-cabc-command-level3", "nubia,mdss-dsi-cabc-command-state");
+	if(ctrl_pdata->cabc_cmds_level3.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-cabc-command-level3\n");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds0,
+		"nubia,mdss-dsi-ce-cabc-command0", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds1,
+		"nubia,mdss-dsi-ce-cabc-command1", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds2,
+		"nubia,mdss-dsi-ce-cabc-command2", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds3,
+		"nubia,mdss-dsi-ce-cabc-command3", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds4,
+		"nubia,mdss-dsi-ce-cabc-command4", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds5,
+		"nubia,mdss-dsi-ce-cabc-command5", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds6,
+		"nubia,mdss-dsi-ce-cabc-command6", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds7,
+		"nubia,mdss-dsi-ce-cabc-command7", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds8,
+		"nubia,mdss-dsi-ce-cabc-command8", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds9,
+		"nubia,mdss-dsi-ce-cabc-command9", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds10,
+		"nubia,mdss-dsi-ce-cabc-command10", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds11,
+		"nubia,mdss-dsi-ce-cabc-command11", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds12,
+		"nubia,mdss-dsi-ce-cabc-command12", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds13,
+		"nubia,mdss-dsi-ce-cabc-command13", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds14,
+		"nubia,mdss-dsi-ce-cabc-command14", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->ce_cabc_cmds15,
+		"nubia,mdss-dsi-ce-cabc-command15", "nubia,mdss-dsi-ce-cabc-command-state");
+
+	/* cabc end */
+#if defined( CONFIG_NUBIA_LCD_ALPM_MODE )
+      /* alpm mode start  */
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->alpm_cmds_on,
+		"nubia,mdss-dsi-alpm-command-on", "nubia,mdss-dsi-alpm-command-on-state");
+	if (ctrl_pdata->alpm_cmds_on.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-alpm-command-on\n");
+	mdss_dsi_parse_dcs_cmds(np, &ctrl_pdata->alpm_cmds_off,
+		"nubia,mdss-dsi-alpm-command-off", "nubia,mdss-dsi-alpm-command-off-state");
+	if (ctrl_pdata->alpm_cmds_off.cmd_cnt == 0)
+		pr_err("[LCD]Unable to read nubia,mdss-dsi-alpm-command-off\n");
+      /* alpm mode end  */
+#endif
+#endif
 
 	pinfo->mipi.force_clk_lane_hs = of_property_read_bool(np,
 		"qcom,mdss-dsi-force-clock-lane-hs");
@@ -2884,5 +3136,21 @@ int mdss_dsi_panel_init(struct device_node *node,
 			mdss_dsi_panel_apply_display_setting;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
 	ctrl_pdata->panel_data.get_idle = mdss_dsi_panel_get_idle_mode;
+#ifdef CONFIG_NUBIA_LCD_DISP_PREFERENCE
+	nubia_set_dsi_ctrl(ctrl_pdata);
+#endif
 	return 0;
 }
+
+static int __init get_jdi_glass_id(char *options)
+{
+	int ret = -1;
+
+	ret = kstrtoint(options, 10, &jdi_panel_class_id);
+	if (ret < 0) {
+		pr_err("%s invalid jdi_panel_class_id:%d\n", __func__, jdi_panel_class_id);
+	}
+	return 1;
+}
+
+__setup("jdi_panel_glass_id=", get_jdi_glass_id);

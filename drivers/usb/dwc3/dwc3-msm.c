@@ -88,6 +88,7 @@ int dcp_max_current = DWC3_IDEV_CHG_MAX;
 module_param(dcp_max_current, int, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(dcp_max_current, "max current drawn for DCP charger");
 
+
 /* XHCI registers */
 #define USB3_HCSPARAMS1		(0x4)
 #define USB3_HCCPARAMS2		(0x1c)
@@ -1856,6 +1857,7 @@ static void dwc3_msm_notify_event(struct dwc3 *dwc, unsigned event,
 					PWR_EVNT_LPM_OUT_L1_MASK, 1);
 
 		atomic_set(&dwc->in_lpm, 0);
+
 		break;
 	case DWC3_CONTROLLER_NOTIFY_OTG_EVENT:
 		dev_dbg(mdwc->dev, "DWC3_CONTROLLER_NOTIFY_OTG_EVENT received\n");
@@ -2343,6 +2345,7 @@ static void dwc3_ext_event_notify(struct dwc3_msm *mdwc)
 	} else {
 		dbg_event(0xFF, "BSV clear", 0);
 		clear_bit(B_SESS_VLD, &mdwc->inputs);
+
 	}
 
 	if (mdwc->suspend) {
@@ -2495,7 +2498,6 @@ static irqreturn_t msm_dwc3_pwr_irq(int irq, void *data)
 	dwc3_pwr_event_handler(mdwc);
 	return IRQ_HANDLED;
 }
-
 static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 				  enum power_supply_property psp,
 				  union power_supply_propval *val)
@@ -3789,7 +3791,7 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned mA)
 		goto skip_psy_type;
 	}
 
-	dev_dbg(mdwc->dev, "Requested curr from USB = %u, max-type-c:%u\n",
+	dev_dbg(mdwc->dev,"Requested curr from USB = %u, max-type-c:%u\n",
 					mA, mdwc->typec_current_max);
 
 	if (mdwc->chg_type == DWC3_SDP_CHARGER)
@@ -3821,7 +3823,7 @@ skip_psy_type:
 	if (mdwc->max_power == mA)
 		return 0;
 
-	dev_info(mdwc->dev, "Avail curr from USB = %u\n", mA);
+	dev_dbg(mdwc->dev,"Avail curr from USB = %u\n", mA);
 
 	if (mdwc->max_power <= 2 && mA > 2) {
 		/* Enable Charging */
