@@ -514,6 +514,17 @@ config LEDS_QPNP
 	  To compile this driver as a module, choose M here: the module will
 	  be called leds-qpnp.
 
+#nubia add for nubia double color no lpg
+config NUBIA_DOUBLE_COLOR_NO_LPG
+        tristate "Support blingking for double-color led without lpg"
+        depends on LEDS_QPNP
+        default n
+config NUBIA_BLINK_WHEN_SLEEP_USE_HARDWARE
+        tristate "Support blingking using hardware when device enter into sleep"
+        depends on NUBIA_DOUBLE_COLOR_NO_LPG
+        default y
+#nubia add end
+
 config LEDS_QPNP_FLASH
 	tristate "Support for QPNP Flash LEDs"
 	depends on LEDS_CLASS && MSM_SPMI && OF_SPMI
