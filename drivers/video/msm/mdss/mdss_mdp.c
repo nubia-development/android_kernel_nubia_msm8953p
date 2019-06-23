@@ -2144,6 +2144,28 @@ static int mdss_mdp_get_pan_intf(const char *pan_intf)
 	return rc;
 }
 
+/**
+ *add by wuyujing,use panel_id to adapt for  touch driver
+ */
+int nubia_panel_id = -1;
+static void nubia_mdss_mdp_get_pan_id(char *panel_name)
+{
+	if (!panel_name ) {
+		pr_err("invalid panel name\n");
+		return;
+	}
+
+	pr_info("panel_name:%s\n", panel_name);
+
+	if (strnstr(panel_name, "qcom,mdss_dsi_boe_nt36672_1080_2160_5p99_video", MDSS_MAX_PANEL_LEN))
+		nubia_panel_id = 3;
+	else if (strnstr(panel_name, "qcom,mdss_dsi_jdi_td4310_1080_2160_5p99_video", MDSS_MAX_PANEL_LEN))
+		nubia_panel_id = 0;
+	else 
+		pr_err("do not find valid panel id\n");
+	
+}
+
 static int mdss_mdp_get_pan_cfg(struct mdss_panel_cfg *pan_cfg)
 {
 	char *t = NULL;
@@ -2186,6 +2208,8 @@ static int mdss_mdp_get_pan_cfg(struct mdss_panel_cfg *pan_cfg)
 	strlcpy(&pan_cfg->arg_cfg[0], t, sizeof(pan_cfg->arg_cfg));
 	pr_debug("%d: t=[%s] panel name=[%s]\n", __LINE__,
 		t, pan_cfg->arg_cfg);
+
+	nubia_mdss_mdp_get_pan_id(pan_cfg->arg_cfg);
 
 	panel_len = strlen(pan_cfg->arg_cfg);
 	if (!panel_len) {
