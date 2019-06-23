@@ -25,7 +25,231 @@ DEFINE_MSM_MUTEX(msm_eeprom_mutex);
 #ifdef CONFIG_COMPAT
 static struct v4l2_file_operations msm_eeprom_v4l2_subdev_fops;
 #endif
+#define CAL_DATA_FLAG      0x0AF6
+#define CAL_DATA_END       0x12F7
 
+static struct msm_camera_reg_settings_t init_setting[78] =
+	{
+	    {0x0A00, 2,0x0000, 2, 0, 0x00},
+            {0x2000, 2,0x100A, 2, 0, 0x00},
+            {0x2002, 2,0x00FF, 2, 0, 0x00},
+            {0x2004, 2,0x0007, 2, 0, 0x00},
+            {0x2006, 2,0x3FFF, 2, 0, 0x00},
+            {0x2008, 2,0x3FFF, 2, 0, 0x00},
+            {0x200A, 2,0xC216, 2, 0, 0x00},
+            {0x200C, 2,0x1292, 2, 0, 0x00},
+            {0x200E, 2,0xC01A, 2, 0, 0x00},
+            {0x2010, 2,0x403D, 2, 0, 0x00},
+            {0x2012, 2,0x000E, 2, 0, 0x00},
+            {0x2014, 2,0x403E, 2, 0, 0x00},
+            {0x2016, 2,0x0B80, 2, 0, 0x00},
+            {0x2018, 2,0x403F, 2, 0, 0x00},
+            {0x201A, 2,0x82AE, 2, 0, 0x00},
+            {0x201C, 2,0x1292, 2, 0, 0x00},
+            {0x201E, 2,0xC00C, 2, 0, 0x00},
+            {0x2020, 2,0x4130, 2, 0, 0x00},
+            {0x2022, 2,0x43E2, 2, 0, 0x00},
+            {0x2024, 2,0x0180, 2, 0, 0x00},
+            {0x2026, 2,0x4130, 2, 0, 0x00},
+            {0x2028, 2,0x7400, 2, 0, 0x00},
+            {0x202A, 2,0x5000, 2, 0, 0x00},
+            {0x202C, 2,0x0253, 2, 0, 0x00},
+            {0x202E, 2,0x0AD1, 2, 0, 0x00},
+            {0x2030, 2,0x2360, 2, 0, 0x00},
+            {0x2032, 2,0x0009, 2, 0, 0x00},
+            {0x2034, 2,0x5020, 2, 0, 0x00},
+            {0x2036, 2,0x000B, 2, 0, 0x00},
+            {0x2038, 2,0x0002, 2, 0, 0x00},
+            {0x203A, 2,0x0044, 2, 0, 0x00},
+            {0x203C, 2,0x0016, 2, 0, 0x00},
+            {0x203E, 2,0x1792, 2, 0, 0x00},
+            {0x2040, 2,0x7002, 2, 0, 0x00},
+            {0x2042, 2,0x154F, 2, 0, 0x00},
+            {0x2044, 2,0x00D5, 2, 0, 0x00},
+            {0x2046, 2,0x000B, 2, 0, 0x00},
+            {0x2048, 2,0x0019, 2, 0, 0x00},
+            {0x204A, 2,0x1698, 2, 0, 0x00},
+            {0x204C, 2,0x000E, 2, 0, 0x00},
+            {0x204E, 2,0x099A, 2, 0, 0x00},
+            {0x2050, 2,0x0058, 2, 0, 0x00},
+            {0x2052, 2,0x7000, 2, 0, 0x00},
+            {0x2054, 2,0x1799, 2, 0, 0x00},
+            {0x2056, 2,0x0310, 2, 0, 0x00},
+            {0x2058, 2,0x03C3, 2, 0, 0x00},
+            {0x205A, 2,0x004C, 2, 0, 0x00},
+            {0x205C, 2,0x064A, 2, 0, 0x00},
+            {0x205E, 2,0x0001, 2, 0, 0x00},
+            {0x2060, 2,0x0007, 2, 0, 0x00},
+            {0x2062, 2,0x0BC7, 2, 0, 0x00},
+            {0x2064, 2,0x0055, 2, 0, 0x00},
+            {0x2066, 2,0x7000, 2, 0, 0x00},
+            {0x2068, 2,0x1550, 2, 0, 0x00},
+            {0x206A, 2,0x158A, 2, 0, 0x00},
+            {0x206C, 2,0x0004, 2, 0, 0x00},
+            {0x206E, 2,0x1488, 2, 0, 0x00},
+            {0x2070, 2,0x7010, 2, 0, 0x00},
+            {0x2072, 2,0x1508, 2, 0, 0x00},
+            {0x2074, 2,0x0004, 2, 0, 0x00},
+            {0x2076, 2,0x0016, 2, 0, 0x00},
+            {0x2078, 2,0x03D5, 2, 0, 0x00},
+            {0x207A, 2,0x0055, 2, 0, 0x00},
+            {0x207C, 2,0x08CA, 2, 0, 0x00},
+            {0x207E, 2,0x2019, 2, 0, 0x00},
+            {0x2080, 2,0x0007, 2, 0, 0x00},
+            {0x2082, 2,0x7057, 2, 0, 0x00},
+            {0x2084, 2,0x0FC7, 2, 0, 0x00},
+            {0x2086, 2,0x5041, 2, 0, 0x00},
+            {0x2088, 2,0x12C8, 2, 0, 0x00},
+            {0x208A, 2,0x5060, 2, 0, 0x00},
+            {0x208C, 2,0x5080, 2, 0, 0x00},
+            {0x208E, 2,0x2084, 2, 0, 0x00},
+            {0x2090, 2,0x12C8, 2, 0, 0x00},
+            {0x2092, 2,0x7800, 2, 0, 0x00},
+            {0x2094, 2,0x0802, 2, 0, 0x00},
+            {0x2096, 2,0x040F, 2, 0, 0x00},
+            {0x2098, 2,0x1007, 2, 0, 0x00},
+	};
+
+	struct msm_camera_reg_settings_t init_settingone[78] =
+	{
+	    {0x209A, 2,0x0803, 2, 0, 0x00},
+            {0x209C, 2,0x080B, 2, 0, 0x00},
+            {0x209E, 2,0x3803, 2, 0, 0x00},
+            {0x20A0, 2,0x0807, 2, 0, 0x00},
+            {0x20A2, 2,0x0404, 2, 0, 0x00},
+            {0x20A4, 2,0x0400, 2, 0, 0x00},
+            {0x20A6, 2,0xFFFF, 2, 0, 0x00},
+            {0x20A8, 2,0xF0B2, 2, 0, 0x00},
+            {0x20AA, 2,0xFFEF, 2, 0, 0x00},
+            {0x20AC, 2,0x0A84, 2, 0, 0x00},
+            {0x20AE, 2,0x1292, 2, 0, 0x00},
+            {0x20B0, 2,0xC02E, 2, 0, 0x00},
+            {0x20B2, 2,0x4130, 2, 0, 0x00},
+            {0x23FE, 2,0xC056, 2, 0, 0x00},
+            {0x3232, 2,0xFC0C, 2, 0, 0x00},
+            {0x3236, 2,0xFC22, 2, 0, 0x00},
+            {0x3248, 2,0xFCA8, 2, 0, 0x00},
+            {0x326A, 2,0x8302, 2, 0, 0x00},
+            {0x326C, 2,0x830A, 2, 0, 0x00},
+            {0x326E, 2,0x0000, 2, 0, 0x00},
+            {0x32CA, 2,0xFC28, 2, 0, 0x00},
+            {0x32CC, 2,0xC3BC, 2, 0, 0x00},
+            {0x32CE, 2,0xC34C, 2, 0, 0x00},
+            {0x32D0, 2,0xC35A, 2, 0, 0x00},
+            {0x32D2, 2,0xC368, 2, 0, 0x00},
+            {0x32D4, 2,0xC376, 2, 0, 0x00},
+            {0x32D6, 2,0xC3C2, 2, 0, 0x00},
+            {0x32D8, 2,0xC3E6, 2, 0, 0x00},
+            {0x32DA, 2,0x0003, 2, 0, 0x00},
+            {0x32DC, 2,0x0003, 2, 0, 0x00},
+            {0x32DE, 2,0x00C7, 2, 0, 0x00},
+            {0x32E0, 2,0x0031, 2, 0, 0x00},
+            {0x32E2, 2,0x0031, 2, 0, 0x00},
+            {0x32E4, 2,0x0031, 2, 0, 0x00},
+            {0x32E6, 2,0xFC28, 2, 0, 0x00},
+            {0x32E8, 2,0xC3BC, 2, 0, 0x00},
+            {0x32EA, 2,0xC384, 2, 0, 0x00},
+            {0x32EC, 2,0xC392, 2, 0, 0x00},
+            {0x32EE, 2,0xC3A0, 2, 0, 0x00},
+            {0x32F0, 2,0xC3AE, 2, 0, 0x00},
+            {0x32F2, 2,0xC3C4, 2, 0, 0x00},
+            {0x32F4, 2,0xC3E6, 2, 0, 0x00},
+            {0x32F6, 2,0x0003, 2, 0, 0x00},
+            {0x32F8, 2,0x0003, 2, 0, 0x00},
+            {0x32FA, 2,0x00C7, 2, 0, 0x00},
+            {0x32FC, 2,0x0031, 2, 0, 0x00},
+            {0x32FE, 2,0x0031, 2, 0, 0x00},
+            {0x3300, 2,0x0031, 2, 0, 0x00},
+            {0x3302, 2,0x82CA, 2, 0, 0x00},
+            {0x3304, 2,0xC164, 2, 0, 0x00},
+            {0x3306, 2,0x82E6, 2, 0, 0x00},
+            {0x3308, 2,0xC19C, 2, 0, 0x00},
+            {0x330A, 2,0x001F, 2, 0, 0x00},
+            {0x330C, 2,0x001A, 2, 0, 0x00},
+            {0x330E, 2,0x0034, 2, 0, 0x00},
+            {0x3310, 2,0x0000, 2, 0, 0x00},
+            {0x3312, 2,0x0000, 2, 0, 0x00},
+            {0x3314, 2,0xFC94, 2, 0, 0x00},
+            {0x3316, 2,0xC3D8, 2, 0, 0x00},
+            {0x0A00, 2,0x0000, 2, 0, 0x00},
+            {0x0E04, 2,0x0012, 2, 0, 0x00},
+            {0x002E, 2,0x1111, 2, 0, 0x00},
+            {0x0032, 2,0x1111, 2, 0, 0x00},
+            {0x0022, 2,0x0008, 2, 0, 0x00},
+            {0x0026, 2,0x0040, 2, 0, 0x00},
+            {0x0028, 2,0x0017, 2, 0, 0x00},
+            {0x002C, 2,0x09CF, 2, 0, 0x00},
+            {0x005C, 2,0x2101, 2, 0, 0x00},
+            {0x0006, 2,0x09DE, 2, 0, 0x00},
+            {0x0008, 2,0x0ED8, 2, 0, 0x00},
+            {0x000E, 2,0x0100, 2, 0, 0x00},
+            {0x000C, 2,0x0022, 2, 0, 0x00},
+            {0x0A22, 2,0x0000, 2, 0, 0x00},
+            {0x0A24, 2,0x0000, 2, 0, 0x00},
+            {0x0804, 2,0x0000, 2, 0, 0x00},
+            {0x0A12, 2,0x0CC0, 2, 0, 0x00},
+            {0x0A14, 2,0x0990, 2, 0, 0x00},
+            {0x0074, 2,0x09D8, 2, 0, 0x00},
+	};
+
+	struct msm_camera_reg_settings_t init_settingtwo[55] =
+	{
+	    {0x0076, 2,0x0000, 2, 0, 0x00},
+            {0x0046, 2,0x0000, 2, 0, 0x00},
+            {0x051E, 2,0x0000, 2, 0, 0x00},
+            {0x0200, 2,0x0400, 2, 0, 0x00},
+            {0x0A1A, 2,0x0C00, 2, 0, 0x00},
+            {0x0A0C, 2,0x0010, 2, 0, 0x00},
+            {0x0A1E, 2,0x0CCF, 2, 0, 0x00},
+            {0x0402, 2,0x0110, 2, 0, 0x00},
+            {0x0404, 2,0x00F4, 2, 0, 0x00},
+            {0x0408, 2,0x0000, 2, 0, 0x00},
+            {0x0410, 2,0x008D, 2, 0, 0x00},
+            {0x0412, 2,0x011A, 2, 0, 0x00},
+            {0x0414, 2,0x864C, 2, 0, 0x00},
+            {0x021C, 2,0x0001, 2, 0, 0x00},
+            {0x0C00, 2,0x9150, 2, 0, 0x00},
+            {0x0C06, 2,0x0021, 2, 0, 0x00},
+            {0x0C10, 2,0x0040, 2, 0, 0x00},
+            {0x0C12, 2,0x0040, 2, 0, 0x00},
+            {0x0C14, 2,0x0040, 2, 0, 0x00},
+            {0x0C16, 2,0x0040, 2, 0, 0x00},
+            {0x0A02, 2,0x0100, 2, 0, 0x00},
+            {0x0A04, 2,0x014A, 2, 0, 0x00},
+            {0x0418, 2,0x0000, 2, 0, 0x00},
+            {0x012A, 2,0x03B4, 2, 0, 0x00},
+            {0x0120, 2,0x0046, 2, 0, 0x00},
+            {0x0122, 2,0x0376, 2, 0, 0x00},
+            {0x0B02, 2,0xE04D, 2, 0, 0x00},
+            {0x0B10, 2,0x6821, 2, 0, 0x00},
+            {0x0B12, 2,0x0120, 2, 0, 0x00},
+            {0x0B14, 2,0x0001, 2, 0, 0x00},
+            {0x2008, 2,0x38FD, 2, 0, 0x00},
+            {0x326E, 2,0x0000, 2, 0, 0x00},
+            {0x0900, 2,0x0320, 2, 0, 0x00},
+            {0x0902, 2,0xC31A, 2, 0, 0x00},
+            {0x0914, 2,0xC109, 2, 0, 0x00},
+            {0x0916, 2,0x061A, 2, 0, 0x00},
+            {0x0918, 2,0x0306, 2, 0, 0x00},
+            {0x091A, 2,0x0B09, 2, 0, 0x00},
+            {0x091C, 2,0x0C07, 2, 0, 0x00},
+            {0x091E, 2,0x0A00, 2, 0, 0x00},
+            {0x090C, 2,0x042A, 2, 0, 0x00},
+            {0x090E, 2,0x006B, 2, 0, 0x00},
+            {0x0954, 2,0x0089, 2, 0, 0x00},
+            {0x0956, 2,0x0000, 2, 0, 0x00},
+            {0x0958, 2,0xCA00, 2, 0, 0x00},
+            {0x095A, 2,0x9240, 2, 0, 0x00},
+            {0x0F08, 2,0x2F04, 2, 0, 0x00},
+            {0x0F30, 2,0x001F, 2, 0, 0x00},
+            {0x0F36, 2,0x001F, 2, 0, 0x00},
+            {0x0F04, 2,0x3A00, 2, 0, 0x00},
+            {0x0F32, 2,0x025A, 2, 0, 0x00},
+            {0x0F38, 2,0x025A, 2, 0, 0x00},
+            {0x0F2A, 2,0x0024, 2, 0, 0x00},
+            {0x006A, 2,0x0100, 2, 0, 0x00},
+            {0x004C, 2,0x0100, 2, 0, 0x00},
+	};
 /**
   * msm_get_read_mem_size - Get the total size for allocation
   * @eeprom_map_array:	mem map
@@ -55,7 +279,12 @@ static int msm_get_read_mem_size
 		}
 		for (i = 0; i < eeprom_map->memory_map_size; i++) {
 			if (eeprom_map->mem_settings[i].i2c_operation ==
-				MSM_CAM_READ) {
+				MSM_CAM_READ ||
+				//ZTEMT:add by yangyikun read OTP data --start
+				eeprom_map->mem_settings[i].i2c_operation == 
+				MSM_CAM_READ_CONTINUOUS) 
+				//ZTEMT:add by yangyikun read OTP data --end
+				{
 				size += eeprom_map->mem_settings[i].reg_data;
 			}
 		}
@@ -147,18 +376,64 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 	struct msm_eeprom_memory_block_t *block)
 {
 	int rc = 0;
-	int j;
+	//ZTEMT: yangyikun k i add for compat SBX and SUNWIN moldule    --start
+	int j,k,i;
+	//ZTEMT: yangyikun k i add for compat SBX and SUNWIN moldule    --end
 	struct msm_eeprom_memory_map_t *emap = block->map;
 	struct msm_eeprom_board_info *eb_info;
 	uint8_t *memptr = block->mapdata;
-
 	if (!e_ctrl) {
 		pr_err("%s e_ctrl is NULL", __func__);
 		return -EINVAL;
 	}
-
+	//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --start
+	if(!strcmp(e_ctrl->eboard_info->eeprom_name, "hi846_front"))
+		{
+			for(i = 0; i < 78; i++)
+				{
+					e_ctrl->i2c_client.addr_type = init_setting[i].addr_type;
+					rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+						&(e_ctrl->i2c_client), init_setting[i].reg_addr,
+						init_setting[i].reg_data, init_setting[i].data_type);
+						//msleep(0);
+						//pr_err("%s: continuous write data1[%d] = %X\n",
+						//			__func__, i, init_setting[i].reg_data);
+					if (rc < 0) {
+						pr_err("%s: page write failed\n", __func__);
+						return rc;
+					}
+				}
+			for(i = 0; i < 78; i++)
+				{
+					e_ctrl->i2c_client.addr_type = init_settingone[i].addr_type;
+					rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+						&(e_ctrl->i2c_client), init_settingone[i].reg_addr,
+						init_settingone[i].reg_data, init_settingone[i].data_type);
+						//msleep(0);
+						//pr_err("%s: continuous write data2[%d] = %X\n",
+						//			__func__, i, init_settingone[i].reg_data);
+					if (rc < 0) {
+						pr_err("%s: page write failed\n", __func__);
+						return rc;
+					}
+				}
+			for(i = 0; i < 55; i++)
+				{
+					e_ctrl->i2c_client.addr_type = init_settingtwo[i].addr_type;
+					rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+						&(e_ctrl->i2c_client), init_settingtwo[i].reg_addr,
+						init_settingtwo[i].reg_data, init_settingtwo[i].data_type);
+						//msleep(0);
+						//pr_err("%s: continuous write data3[%d] = %X\n",
+						//			__func__, i, init_settingtwo[i].reg_data);
+					if (rc < 0) {
+						pr_err("%s: page write failed\n", __func__);
+						return rc;
+					}
+				}
+			}
+	//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --end
 	eb_info = e_ctrl->eboard_info;
-
 	for (j = 0; j < block->num_map; j++) {
 		if (emap[j].saddr.addr) {
 			eb_info->i2c_slaveaddr = emap[j].saddr.addr;
@@ -173,7 +448,7 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
 				&(e_ctrl->i2c_client), emap[j].page.addr,
 				emap[j].page.data, emap[j].page.data_t);
-				msleep(emap[j].page.delay);
+				//msleep(emap[j].page.delay);
 			if (rc < 0) {
 				pr_err("%s: page write failed\n", __func__);
 				return rc;
@@ -184,7 +459,7 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
 				&(e_ctrl->i2c_client), emap[j].pageen.addr,
 				emap[j].pageen.data, emap[j].pageen.data_t);
-				msleep(emap[j].pageen.delay);
+				//msleep(emap[j].pageen.delay);
 			if (rc < 0) {
 				pr_err("%s: page enable failed\n", __func__);
 				return rc;
@@ -201,18 +476,25 @@ static int read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 				return rc;
 			}
 		}
-
+		//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --start
 		if (emap[j].mem.valid_size) {
 			e_ctrl->i2c_client.addr_type = emap[j].mem.addr_t;
-			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
-				&(e_ctrl->i2c_client), emap[j].mem.addr,
-				memptr, emap[j].mem.valid_size);
-			if (rc < 0) {
-				pr_err("%s: read failed\n", __func__);
-				return rc;
+			//pr_err("%s first2 \n", __func__);
+			for(k = 0; k < 11; k++)
+				{
+				rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
+					&(e_ctrl->i2c_client), emap[j].mem.addr,
+					memptr, 1);
+				//pr_err("%s: continuous read data[%d] = %X\n",
+				//			__func__, k, *memptr);
+				if (rc < 0) {
+					pr_err("%s: read failed\n", __func__);
+					return rc;
+				}
+				memptr ++;
 			}
-			memptr += emap[j].mem.valid_size;
 		}
+		//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --start
 		if (emap[j].pageen.valid_size) {
 			e_ctrl->i2c_client.addr_type = emap[j].pageen.addr_t;
 			rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
@@ -325,7 +607,9 @@ ERROR:
 static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 	struct msm_eeprom_memory_map_array *eeprom_map_array)
 {
-	int rc =  0, i, j;
+	//ZTEMT: int k add by yangyikun read OTP data --start
+	int rc =  0, i, j, k;
+	//ZTEMT: int k add by yangyikun read OTP data --end
 	uint8_t *memptr;
 	struct msm_eeprom_mem_map_t *eeprom_map;
 
@@ -406,6 +690,34 @@ static int eeprom_parse_memory_map(struct msm_eeprom_ctrl_t *e_ctrl,
 				memptr += eeprom_map->mem_settings[i].reg_data;
 			}
 			break;
+			//ZTEMT:add by yangyikun read OTP data --start
+			case MSM_CAM_READ_CONTINUOUS: { 
+				e_ctrl->i2c_client.addr_type =
+					eeprom_map->mem_settings[i].addr_type;
+				for(k = 0; k < eeprom_map->mem_settings[i].reg_data; k++) {
+					rc = e_ctrl->i2c_client.i2c_func_tbl->
+						i2c_read_seq(&(e_ctrl->i2c_client),
+						eeprom_map->mem_settings[i].reg_addr,
+						memptr,
+						1);
+//					pr_err("%s: continuous read data[%d] = %X\n",
+//							__func__, k, *memptr);
+					if (rc < 0) {
+						pr_err("%s: continuous read failed count = %d\n",
+							__func__, k);
+						goto clean_up;
+					}
+					memptr++;
+				}
+				msleep(eeprom_map->mem_settings[i].delay);
+				if (rc < 0) {
+					pr_err("%s: read failed\n",
+						__func__);
+					goto clean_up;
+				}
+			}
+			break;
+			//ZTEMT:add by yangyikun read OTP data --end
 			default:
 				pr_err("%s: %d Invalid i2c operation LC:%d\n",
 					__func__, __LINE__, i);
@@ -611,6 +923,80 @@ static int eeprom_config_read_cal_data(struct msm_eeprom_ctrl_t *e_ctrl,
 	return rc;
 }
 
+//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- start
+static int write_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl, uint32_t size, uint8_t* buffer)
+{
+	int rc = 0;
+	uint32_t i = 0;
+	uint8_t *buffer_read = NULL;
+	int check_sum = 0;
+
+	if (!e_ctrl) {
+		pr_err("%s e_ctrl is NULL", __func__);
+		return -EINVAL;
+	}
+
+        msleep(50);//ZTEMT: li.bin223 add for improve write eeprom
+
+	for (i = CAL_DATA_FLAG+1; i < CAL_DATA_END; i++) {
+		check_sum += buffer[i - CAL_DATA_FLAG -1];
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+				&(e_ctrl->i2c_client),
+				i,
+				buffer[i - CAL_DATA_FLAG -1],
+				1);
+		if ( rc < 0) {
+			pr_err("%s addr = 0x%x, data = 0x%X, rc =%d \n", __func__,i , buffer[i], rc);
+			break;
+		}
+		usleep_range(2000,2100);
+	}
+
+
+	if ( rc < 0) {
+		goto END;
+	}
+
+	//check data
+	buffer_read = kzalloc(sizeof(uint8_t) * (size + 1), GFP_KERNEL);
+	if (!buffer_read) {
+		pr_err("%s:%d kzalloc failed\n", __func__, __LINE__);
+		return -ENOMEM;
+	}
+
+	rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
+				&(e_ctrl->i2c_client),
+				CAL_DATA_FLAG,
+				buffer_read,
+				size+1);
+
+	if ( rc < 0) {
+		kfree(buffer_read);
+		goto END;
+	}
+
+	check_sum += buffer_read[0];
+	check_sum %= 256;
+	rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_write(
+			&(e_ctrl->i2c_client),
+			CAL_DATA_END,
+			check_sum,
+			1);	
+			
+	for (i = 0; i < size ; i++) {
+		if (buffer[i] != buffer_read[i+1]) {
+			pr_err("%s data error, addr=0x%X, write data =0x%X, read data=0x%X",
+				__func__, i, buffer[i], buffer_read[i]);
+			rc = -EINVAL;
+			break;
+		}
+	}
+
+	kfree(buffer_read);
+END:
+	return rc;
+}
+//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- end
 static int msm_eeprom_config(struct msm_eeprom_ctrl_t *e_ctrl,
 	void __user *argp)
 {
@@ -618,6 +1004,10 @@ static int msm_eeprom_config(struct msm_eeprom_ctrl_t *e_ctrl,
 		(struct msm_eeprom_cfg_data *)argp;
 	int rc = 0;
 	size_t length = 0;
+	//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- start
+	uint8_t *buffer;
+	uint32_t size;
+	//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- end
 
 	CDBG("%s E\n", __func__);
 	switch (cdata->cfgtype) {
@@ -672,6 +1062,31 @@ static int msm_eeprom_config(struct msm_eeprom_ctrl_t *e_ctrl,
 				__func__, __LINE__);
 		}
 		break;
+	//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- start
+	case CFG_EEPROM_DO_CALIBRATION:
+		CDBG("%s E CFG_EEPROM_READ_CAL_DATA\n", __func__);
+		size = cdata->cfg.write_data.num_bytes;
+		buffer = kzalloc(size * (sizeof(uint8_t)), GFP_KERNEL);
+		if (!buffer) {
+		pr_err("%s:%d failed\n", __func__, __LINE__);
+			rc = -ENOMEM;
+			return rc;
+		}
+		if (copy_from_user(buffer, cdata->cfg.write_data.dbuffer ,size * sizeof(uint8_t))) {
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+			kfree(buffer);
+			rc = -EFAULT;
+			return rc;
+		}
+		rc = write_eeprom_memory(e_ctrl, size, buffer);
+		if (rc < 0) {
+			pr_err("%s write eeprom failed",__func__);
+			kfree(buffer);
+			return rc;
+		}
+		kfree(buffer);
+		break;
+	//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- end
 	default:
 		break;
 	}
@@ -1071,7 +1486,6 @@ static int msm_eeprom_spi_setup(struct spi_device *spi)
 	struct msm_eeprom_board_info *eb_info;
 	struct msm_camera_power_ctrl_t *power_info = NULL;
 	int rc = 0;
-
 	e_ctrl = kzalloc(sizeof(*e_ctrl), GFP_KERNEL);
 	if (!e_ctrl) {
 		pr_err("%s:%d kzalloc failed\n", __func__, __LINE__);
@@ -1084,7 +1498,6 @@ static int msm_eeprom_spi_setup(struct spi_device *spi)
 	e_ctrl->userspace_probe = 0;
 	e_ctrl->cal_data.mapdata = NULL;
 	e_ctrl->cal_data.map = NULL;
-
 	spi_client = kzalloc(sizeof(*spi_client), GFP_KERNEL);
 	if (!spi_client) {
 		pr_err("%s:%d kzalloc failed\n", __func__, __LINE__);
@@ -1335,6 +1748,7 @@ static int eeprom_config_read_cal_data32(struct msm_eeprom_ctrl_t *e_ctrl,
 	cdata.cfgtype = cdata32->cfgtype;
 	cdata.is_supported = cdata32->is_supported;
 	cdata.cfg.read_data.num_bytes = cdata32->cfg.read_data.num_bytes;
+	//pr_err("kk cfgtype = %d , is_supported = %d, num_bytes = %d\n", cdata32->cfgtype, cdata32->is_supported, cdata32->cfg.read_data.num_bytes);
 	/* check range */
 	if (cdata.cfg.read_data.num_bytes >
 	    e_ctrl->cal_data.num_data) {
@@ -1350,7 +1764,6 @@ static int eeprom_config_read_cal_data32(struct msm_eeprom_ctrl_t *e_ctrl,
 
 	rc = copy_to_user(ptr_dest, e_ctrl->cal_data.mapdata,
 		cdata.cfg.read_data.num_bytes);
-
 	return rc;
 }
 
@@ -1475,6 +1888,52 @@ free_mem:
 	mem_map_array = NULL;
 	return rc;
 }
+//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --start
+static int msm_eeprom_get_cmm_data32(struct msm_eeprom_ctrl_t *e_ctrl,
+				       struct msm_eeprom_cfg_data32 *cdata)
+{
+	int rc = 0;
+	struct msm_eeprom_cmm_t *cmm_data = &e_ctrl->eboard_info->cmm_data;
+	cdata->cfg.get_cmm_data.cmm_support = cmm_data->cmm_support;
+	cdata->cfg.get_cmm_data.cmm_compression = cmm_data->cmm_compression;
+	cdata->cfg.get_cmm_data.cmm_size = cmm_data->cmm_size;
+	//pr_err("yang get data1 cmm_support %d : cmm_compr %d,  cmm_size %d\n",
+	//	cmm_data->cmm_support,
+	//	cmm_data->cmm_compression,
+	//	cmm_data->cmm_size);
+	return rc;
+}
+//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --end
+//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- start
+static int write_eeprom_memory32(struct msm_eeprom_ctrl_t *e_ctrl, void __user *arg)
+{
+	int rc;
+	uint8_t *buffer;
+	uint32_t size;
+	struct msm_eeprom_cfg_data32 *cdata32 =
+		(struct msm_eeprom_cfg_data32 *) arg;
+
+	size = cdata32->cfg.write_data.num_bytes;
+
+	buffer = kzalloc(size * (sizeof(uint8_t)), GFP_KERNEL);
+	if (!buffer) {
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+			rc = -ENOMEM;
+			return rc;
+	}
+	if (copy_from_user(buffer, (void *)compat_ptr(cdata32->cfg.write_data.dbuffer) ,size * sizeof(uint8_t))) {
+			pr_err("%s:%d failed\n", __func__, __LINE__);
+			kfree(buffer);
+			rc = -EFAULT;
+			return rc;
+	}
+	
+	rc = write_eeprom_memory(e_ctrl, size , buffer);
+
+	kfree(buffer);
+	return rc;
+}
+//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- end
 
 static int msm_eeprom_config32(struct msm_eeprom_ctrl_t *e_ctrl,
 	void __user *argp)
@@ -1514,23 +1973,68 @@ static int msm_eeprom_config32(struct msm_eeprom_ctrl_t *e_ctrl,
 		CDBG("%s E CFG_EEPROM_READ_CAL_DATA\n", __func__);
 		rc = eeprom_config_read_cal_data32(e_ctrl, argp);
 		break;
+	//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --start
+	case CFG_EEPROM_GET_MM_INFO:
+		CDBG("%s E CFG_EEPROM_GET_MM_INFO\n", __func__);
+		rc = msm_eeprom_get_cmm_data32(e_ctrl, cdata);
+		break;
+	//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --end
 	case CFG_EEPROM_INIT:
-		if (e_ctrl->userspace_probe == 0) {
-			pr_err("%s:%d Eeprom already probed at kernel boot",
-				__func__, __LINE__);
+		//ZTEMT: yangyikun strcmp add for compat SBX and SUNWIN moldule    --start
+		if (e_ctrl->userspace_probe == 0 ) {
+			if (!e_ctrl->eboard_info) {
+			pr_err("%s e_ctrl->eboard_info is NULL", __func__);
 			rc = -EINVAL;
 			break;
+			}
+			if (!e_ctrl->eboard_info->eeprom_name) {
+			pr_err("%s e_ctrl->eboard_info->eeprom_name is NULL", __func__);
+			rc = -EINVAL;
+			break;
+			}
+			if(strcmp(e_ctrl->eboard_info->eeprom_name, "hi846_front"))
+				{
+		//ZTEMT: yangyikun strcmp add for compat SBX and SUNWIN moldule    --end
+				pr_err("%s:%d Eeprom already probed at kernel boot",
+					__func__, __LINE__);
+				rc = -EINVAL;
+				break;
+				}
 		}
-		if (e_ctrl->cal_data.num_data == 0) {
+		//ZTEMT: yangyikun strcmp add for compat SBX and SUNWIN moldule    --start
+		if (e_ctrl->cal_data.num_data == 0 ){
+		//ZTEMT: yangyikun strcmp add for compat SBX and SUNWIN moldule    --end
 			rc = eeprom_init_config32(e_ctrl, argp);
 			if (rc < 0)
 				pr_err("%s:%d Eeprom init failed\n",
 					__func__, __LINE__);
-		} else {
+		}else if(!e_ctrl->eboard_info->eeprom_name)
+			{
+				//pr_err("%s e_ctrl->eboard_info->eeprom_name is NULL e_ctrl->cal_data.num_data = %d", __func__,e_ctrl->cal_data.num_data);
+				rc = -EINVAL;
+				break;
+			}else if(!strcmp(e_ctrl->eboard_info->eeprom_name, "hi846_front"))
+			{
+			//pr_err("%s e_ctrl->eboard_info->eeprom_name is %s", __func__,e_ctrl->eboard_info->eeprom_name);
+			rc = eeprom_init_config32(e_ctrl, argp);
+			if (rc < 0)
+				pr_err("%s:%d Eeprom init failed\n",
+					__func__, __LINE__);
+			}else{
 			CDBG("%s:%d Already read eeprom\n",
 				__func__, __LINE__);
 		}
 		break;
+	//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- start
+	case CFG_EEPROM_DO_CALIBRATION:
+		CDBG("%s E CFG_EEPROM_READ_CAL_DATA\n", __func__);
+		rc = write_eeprom_memory32(e_ctrl, argp);
+		if (rc < 0) {
+			pr_err("%s write eeprom failed",__func__);
+			return rc;
+		}
+		break;
+	//ZTEMT:zhouruoyu add for factory altek 3D calibration ----- end
 	default:
 		break;
 	}
@@ -1550,7 +2054,9 @@ static long msm_eeprom_subdev_ioctl32(struct v4l2_subdev *sd,
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_GET_SUBDEV_ID:
 		return msm_eeprom_get_subdev_id(e_ctrl, argp);
-	case VIDIOC_MSM_EEPROM_CFG32:
+	//ZTEMT: yangyikun strcmp add for compat SBX and SUNWIN moldule    --start
+	case VIDIOC_MSM_EEPROM_CFG:
+	//ZTEMT: yangyikun strcmp add for compat SBX and SUNWIN moldule    --start
 		return msm_eeprom_config32(e_ctrl, argp);
 	default:
 		return -ENOIOCTLCMD;
@@ -1673,6 +2179,20 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 		pr_err("%s failed %d\n", __func__, __LINE__);
 		e_ctrl->userspace_probe = 1;
 	}
+
+	//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --start
+	if(eb_info->eeprom_name !=NULL)
+	{
+		if(!strcmp(eb_info->eeprom_name, "hi846_front"))
+		{
+			rc = msm_eeprom_cmm_dts(e_ctrl->eboard_info, of_node);
+			if (rc < 0)
+				{
+				pr_err("%s MM data miss:%d\n", __func__, __LINE__);
+				}
+		}
+	}
+	//ZTEMT: yangyikun add for compat SBX and SUNWIN moldule    --end
 
 	rc = msm_eeprom_get_dt_data(e_ctrl);
 	if (rc < 0)
