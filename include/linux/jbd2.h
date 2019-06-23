@@ -46,7 +46,12 @@
 /*
  * The default maximum commit age, in seconds.
  */
-#define JBD2_DEFAULT_MAX_COMMIT_AGE 5
+//nubia del 
+//#define JBD2_DEFAULT_MAX_COMMIT_AGE 5
+//nubia del end
+//nubia add 
+#define JBD2_DEFAULT_MAX_COMMIT_AGE 30
+//nubia add end
 
 #ifdef CONFIG_JBD2_DEBUG
 /*
@@ -993,6 +998,9 @@ struct journal_s
 
 	/* Precomputed journal UUID checksum for seeding other checksums */
 	__u32 j_csum_seed;
+
+	/* waiting for journal commit to complete */
+	atomic_t j_log_wait;
 };
 
 /*
