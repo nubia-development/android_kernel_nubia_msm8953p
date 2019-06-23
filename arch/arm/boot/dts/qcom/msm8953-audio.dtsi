@@ -11,15 +11,13 @@
  * GNU General Public License for more details.
  */
 
-#include "msm8953-wsa881x.dtsi"
 
 &int_codec {
 	qcom,model = "msm8953-snd-card-mtp";
-
-	qcom,cdc-us-euro-gpios = <&tlmm 63 0>;
-	qcom,msm-mbhc-hphl-swh = <0>;
+    qcom,cdc-ext-amp-gpios = <&tlmm 25 0>;
+	qcom,msm-mbhc-hphl-swh = <1>;
 	qcom,msm-mbhc-gnd-swh = <0>;
-	qcom,msm-hs-micbias-type = "internal";
+	qcom,msm-hs-micbias-type = "external";
 	qcom,msm-micbias1-ext-cap;
 
 	qcom,msm-gpios =
@@ -115,12 +113,6 @@
 	asoc-codec = <&stub_codec>, <&pm8953_diangu_dig>, <&hdmi_dba>;
 	asoc-codec-names = "msm-stub-codec.1", "cajon_codec",
 						"msm-hdmi-dba-codec-rx";
-	asoc-wsa-codec-names = "wsa881x-i2c-codec.2-000f";
-	asoc-wsa-codec-prefixes = "SpkrMono";
-
-	msm-vdd-wsa-switch-supply = <&pm8953_l5>;
-	qcom,msm-vdd-wsa-switch-voltage = <1800000>;
-	qcom,msm-vdd-wsa-switch-current = <10000>;
 };
 
 &pm8953_gpios {
@@ -138,15 +130,9 @@
 &ext_codec {
 	qcom,model = "msm8953-tasha-snd-card";
 
-	qcom,cdc-us-euro-gpios = <&tlmm 63 0>;
 	qcom,msm-mbhc-hphl-swh = <0>;
 	qcom,msm-mbhc-gnd-swh = <0>;
 
-	qcom,wsa-max-devs = <2>;
-	qcom,wsa-devs = <&wsa881x_211>, <&wsa881x_212>,
-			<&wsa881x_213>, <&wsa881x_214>;
-	qcom,wsa-aux-dev-prefix = "SpkrLeft", "SpkrRight",
-				"SpkrLeft", "SpkrRight";
 };
 
 &wcd9xxx_intc {
