@@ -36,6 +36,7 @@
 #include <linux/alarmtimer.h>
 #include <linux/qpnp/qpnp-revid.h>
 
+
 /* Register offsets */
 
 /* Interrupt offsets */
@@ -315,7 +316,9 @@ module_param_named(
 	debug_mask, fg_debug_mask, int, S_IRUSR | S_IWUSR
 );
 
+
 static int fg_reset_on_lockup;
+
 
 static int fg_sense_type = -EINVAL;
 static int fg_restart;
@@ -590,6 +593,7 @@ struct fg_chip {
 	bool			batt_warm;
 	bool			batt_cool;
 	int			cold_hysteresis;
+
 	int			hot_hysteresis;
 	/* ESR pulse tuning */
 	struct fg_wakeup_source	esr_extract_wakeup_source;
@@ -707,6 +711,7 @@ static char *fg_supplicants[] = {
 	"bcl",
 	"fg_adc"
 };
+
 
 #define DEBUG_PRINT_BUFFER_SIZE 64
 static void fill_string(char *str, size_t str_len, u8 *buf, int buf_len)
@@ -1844,9 +1849,9 @@ exit:
 static int fg_interleaved_mem_write(struct fg_chip *chip, u8 *val, u16 address,
 							int len, int offset)
 {
-	int rc = 0, ret, orig_address = address;
+
+	int rc = 0, orig_address = address;
 	u8 count = 0;
-	bool retry = false;
 
 	if (chip->fg_shutdown)
 		return -EINVAL;
@@ -2263,6 +2268,7 @@ static int get_prop_capacity(struct fg_chip *chip)
 
 	if (chip->charge_full)
 		return FULL_CAPACITY;
+
 
 	if (chip->soc_empty) {
 		if (fg_debug_mask & FG_POWER_SUPPLY)
@@ -4769,6 +4775,7 @@ static int fg_power_set_property(struct power_supply *psy,
 		chip->status = val->intval;
 		schedule_work(&chip->status_change_work);
 		check_gain_compensation(chip);
+
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
 		chip->health = val->intval;
@@ -5779,6 +5786,7 @@ static int fg_rslow_charge_comp_clear(struct fg_chip *chip)
 
 	rc = fg_mem_write(chip, chip->rslow_comp.rs_to_rslow,
 			TEMP_RS_TO_RSLOW_REG, 2, RS_TO_RSLOW_CHG_OFFSET, 0);
+
 	if (rc) {
 		pr_err("unable to write rs to rslow: %d\n", rc);
 		goto done;
@@ -6317,9 +6325,10 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 	int len;
 	struct device_node *node = chip->spmi->dev.of_node;
 	struct device_node *batt_node, *profile_node;
-	const char *data, *batt_type_str;
+	const char *data, *batt_type_str, *old_batt_type;
 	bool tried_again = false, vbat_in_range, profiles_same;
 	u8 reg = 0;
+
 
 wait:
 	fg_stay_awake(&chip->profile_wakeup_source);
@@ -6361,14 +6370,12 @@ wait:
 				get_sram_prop_now(chip, FG_DATA_BATT_ID));
 	profile_node = of_batterydata_get_best_profile(batt_node, "bms",
 							fg_batt_type);
-	if (IS_ERR_OR_NULL(profile_node)) {
-		rc = PTR_ERR(profile_node);
-		if (rc == -EPROBE_DEFER) {
-			goto reschedule;
-		} else {
-			pr_err("couldn't find profile handle rc=%d\n", rc);
-			goto no_profile;
-		}
+	
+	if (!profile_node) {
+		pr_err("couldn't find profile handle\n");
+		old_batt_type = default_batt_type;
+		rc = -ENODATA;
+		goto no_profile;
 	}
 
 	/* read rslow compensation values if they're available */
@@ -6431,6 +6438,7 @@ wait:
 		goto no_profile;
 	}
 
+
 	rc = of_property_read_string(profile_node, "qcom,battery-type",
 					&batt_type_str);
 	if (rc) {
@@ -6467,6 +6475,7 @@ wait:
 			< settings[FG_MEM_VBAT_EST_DIFF].value * 1000;
 	profiles_same = memcmp(chip->batt_profile, data,
 					PROFILE_COMPARE_LEN) == 0;
+
 	if (reg & PROFILE_INTEGRITY_BIT) {
 		fg_cap_learning_load_data(chip);
 		if (vbat_in_range && !fg_is_batt_empty(chip) && profiles_same) {
@@ -6483,6 +6492,7 @@ wait:
 			goto done;
 		}
 	} else {
+
 		pr_info("Battery profile not same, clearing data\n");
 		clear_cycle_counter(chip);
 		chip->learning_data.learned_cc_uah = 0;
@@ -6508,6 +6518,10 @@ wait:
 				DUMP_PREFIX_NONE, 16, 1,
 				chip->batt_profile, len, false);
 	}
+	old_batt_type = chip->batt_type;
+	chip->batt_type = loading_batt_type;
+	if (chip->power_supply_registered)
+		power_supply_changed(&chip->bms_psy);
 
 	memcpy(chip->batt_profile, data, len);
 	chip->batt_profile_len = len;
@@ -6581,6 +6595,7 @@ done:
 	chip->battery_missing = is_battery_missing(chip);
 	update_chg_iterm(chip);
 	update_cc_cv_setpoint(chip);
+
 	rc = populate_system_data(chip);
 	if (rc) {
 		pr_err("failed to read ocv properties=%d\n", rc);
@@ -6595,7 +6610,10 @@ done:
 		fg_data[FG_DATA_VOLTAGE].value);
 	complete_all(&chip->fg_reset_done);
 	return rc;
+
 no_profile:
+	chip->batt_type = old_batt_type;
+
 	chip->soc_reporting_ready = true;
 	if (chip->charging_disabled) {
 		rc = set_prop_enable_charging(chip, true);
@@ -7994,6 +8012,7 @@ static int bcl_trim_workaround(struct fg_chip *chip)
 	return 0;
 }
 
+
 #define FG_ALG_SYSCTL_1			0x4B0
 #define KI_COEFF_PRED_FULL_ADDR		0x408
 #define TEMP_FRAC_SHIFT_REG		0x4A4
@@ -8676,6 +8695,7 @@ static void delayed_init_work(struct work_struct *work)
 	chip->otg_present = is_otg_present(chip);
 	chip->init_done = true;
 	pr_debug("FG: HW_init success\n");
+
 	return;
 done:
 	fg_cleanup(chip);
@@ -8876,7 +8896,9 @@ static int fg_probe(struct spmi_device *spmi)
 		goto cancel_work;
 	}
 
+
 	chip->batt_type = default_batt_type;
+
 
 	chip->bms_psy.name = "bms";
 	chip->bms_psy.type = POWER_SUPPLY_TYPE_BMS;
@@ -8987,6 +9009,7 @@ static int fg_suspend(struct device *dev)
 {
 	struct fg_chip *chip = dev_get_drvdata(dev);
 
+
 	if (!chip->sw_rbias_ctrl)
 		return 0;
 
@@ -8999,6 +9022,7 @@ static int fg_suspend(struct device *dev)
 static int fg_resume(struct device *dev)
 {
 	struct fg_chip *chip = dev_get_drvdata(dev);
+
 
 	if (!chip->sw_rbias_ctrl)
 		return 0;
