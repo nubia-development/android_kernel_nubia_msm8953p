@@ -7,7 +7,6 @@
 
 #include "camera.dtsi"
 #include "nfc.dtsi"
-#include "neo-power.dtsi"
 #include "sensors.dtsi"
 #include "display.dtsi"
 #include "touch.dtsi"
