@@ -32,7 +32,10 @@
 #include <linux/wakeup_reason.h>
 
 #include "power.h"
-
+#include <linux/gpio.h> 
+//nubia for PR00430974 ipc00000fc_android.bg keep lock
+extern int slst_gpio_base_id; 
+#define PROC_AWAKE_ID 12 /* 12th bit */ 
 const char *pm_labels[] = { "mem", "standby", "freeze", NULL };
 const char *pm_states[PM_SUSPEND_MAX];
 
@@ -42,6 +45,9 @@ static DECLARE_WAIT_QUEUE_HEAD(suspend_freeze_wait_head);
 
 enum freeze_state __read_mostly suspend_freeze_state;
 static DEFINE_SPINLOCK(suspend_freeze_lock);
+#ifdef CONFIG_ZTEMT_POWER_DEBUG    
+bool wakeup_wake_lock_debug = false;
+#endif  
 
 void freeze_set_ops(const struct platform_freeze_ops *ops)
 {
@@ -420,6 +426,10 @@ int suspend_devices_and_enter(suspend_state_t state)
 	if (error)
 		goto Close;
 
+#ifdef CONFIG_ZTEMT_POWER_DEBUG
+	wakeup_wake_lock_debug = true;
+#endif //CONFIG_ZTEMT_POWER_DEBUG
+
 	suspend_console();
 	suspend_test_start();
 	error = dpm_suspend_start(PMSG_SUSPEND);
@@ -551,7 +561,9 @@ int pm_suspend(suspend_state_t state)
 		return -EINVAL;
 
 	pm_suspend_marker("entry");
+    gpio_set_value(slst_gpio_base_id + PROC_AWAKE_ID, 0);  //nubia for PR00430974 ipc00000fc_android.bg keep lock
 	error = enter_state(state);
+	gpio_set_value(slst_gpio_base_id + PROC_AWAKE_ID, 1);  //nubia for PR00430974 ipc00000fc_android.bg keep lock
 	if (error) {
 		suspend_stats.fail++;
 		dpm_save_failed_errno(error);
