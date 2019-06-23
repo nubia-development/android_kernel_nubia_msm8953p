@@ -34,6 +34,12 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/syscore_ops.h>
 
+//NUBIA ADD
+#include <linux/wakelock.h>
+#define WAKELOCK_HOLD_TIME 500 /* in ms */
+static struct wake_lock wechat_wakelock;
+//NUBIA ADD END
+
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
 	struct input_dev *input;
@@ -340,6 +346,7 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 	int state;
 
 	state = (__gpio_get_value(button->gpio) ? 1 : 0) ^ button->active_low;
+       dev_err(&input->dev,"report_key_event,code=%d,state=%s\n",button->code,state?"down":"up");
 
 	if (type == EV_ABS) {
 		if (state)
@@ -373,6 +380,13 @@ static irqreturn_t gpio_keys_gpio_isr(int irq, void *dev_id)
 	struct gpio_button_data *bdata = dev_id;
 
 	BUG_ON(irq != bdata->irq);
+	//NUBIA ADD
+	dev_err(&bdata->input->dev,"gpio_keys_gpio_isr,button-code=%d,gpio_value = %d\n",
+	bdata->button->code,__gpio_get_value(bdata->button->gpio));
+
+       if (bdata->button->wakeup)
+          wake_lock_timeout(&wechat_wakelock, msecs_to_jiffies(WAKELOCK_HOLD_TIME));
+	//NUBIA ADD END
 
 	if (bdata->button->wakeup)
 		pm_stay_awake(bdata->input->dev.parent);
@@ -800,7 +814,9 @@ static int gpio_keys_probe(struct platform_device *pdev)
 			return error;
 		}
 	}
-
+        //NUBIA ADD
+        wake_lock_init(&wechat_wakelock, WAKE_LOCK_SUSPEND, "wechat_wakelock");
+        //NUBIA ADD END
 	for (i = 0; i < pdata->nbuttons; i++) {
 		const struct gpio_keys_button *button = &pdata->buttons[i];
 		struct gpio_button_data *bdata = &ddata->data[i];
@@ -857,7 +873,9 @@ static int gpio_keys_remove(struct platform_device *pdev)
 {
 	sysfs_remove_group(&pdev->dev.kobj, &gpio_keys_attr_group);
 	unregister_syscore_ops(&gpio_keys_syscore_pm_ops);
-
+        //NUBIA ADD
+        wake_lock_destroy(&wechat_wakelock);
+        //NUBIA ADD END
 	device_init_wakeup(&pdev->dev, 0);
 
 	return 0;
