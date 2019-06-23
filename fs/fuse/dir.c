@@ -13,6 +13,9 @@
 #include <linux/sched.h>
 #include <linux/namei.h>
 #include <linux/slab.h>
+//Nubia FileObserver Begin
+#include "file_observer.h"
+//Nubia FileObserver End
 
 static bool fuse_use_readdirplus(struct inode *dir, struct dir_context *ctx)
 {
@@ -658,6 +661,7 @@ static int fuse_mknod(struct inode *dir, struct dentry *entry, umode_t mode,
 	struct fuse_mknod_in inarg;
 	struct fuse_conn *fc = get_fuse_conn(dir);
 	struct fuse_req *req = fuse_get_req_nopages(fc);
+        int ret = 0;
 	if (IS_ERR(req))
 		return PTR_ERR(req);
 
@@ -675,7 +679,11 @@ static int fuse_mknod(struct inode *dir, struct dentry *entry, umode_t mode,
 	req->in.args[0].value = &inarg;
 	req->in.args[1].size = entry->d_name.len + 1;
 	req->in.args[1].value = entry->d_name.name;
-	return create_new_entry(fc, req, dir, entry, mode);
+	ret = create_new_entry(fc, req, dir, entry, mode);
+        //Nubia FileObserver Begin
+        fuse_post_file_create(entry);
+        //Nubia FileObserver End
+        return ret;
 }
 
 static int fuse_create(struct inode *dir, struct dentry *entry, umode_t mode,
@@ -689,6 +697,7 @@ static int fuse_mkdir(struct inode *dir, struct dentry *entry, umode_t mode)
 	struct fuse_mkdir_in inarg;
 	struct fuse_conn *fc = get_fuse_conn(dir);
 	struct fuse_req *req = fuse_get_req_nopages(fc);
+        int ret = 0;
 	if (IS_ERR(req))
 		return PTR_ERR(req);
 
@@ -704,7 +713,12 @@ static int fuse_mkdir(struct inode *dir, struct dentry *entry, umode_t mode)
 	req->in.args[0].value = &inarg;
 	req->in.args[1].size = entry->d_name.len + 1;
 	req->in.args[1].value = entry->d_name.name;
-	return create_new_entry(fc, req, dir, entry, S_IFDIR);
+
+	ret =  create_new_entry(fc, req, dir, entry, S_IFDIR);
+        //Nubia FileObserver Begin
+        fuse_post_file_mkdir(dir, entry);
+        //Nubia FileObserver End
+        return ret;
 }
 
 static int fuse_symlink(struct inode *dir, struct dentry *entry,
@@ -768,6 +782,9 @@ static int fuse_unlink(struct inode *dir, struct dentry *entry)
 		fuse_invalidate_attr(dir);
 		fuse_invalidate_entry_cache(entry);
 		fuse_update_ctime(inode);
+                //Nubia FileObserver Begin
+                fuse_post_file_unlink(dir, entry);
+                //Nubia FileObserver End
 	} else if (err == -EINTR)
 		fuse_invalidate_entry(entry);
 	return err;
@@ -793,6 +810,9 @@ static int fuse_rmdir(struct inode *dir, struct dentry *entry)
 		clear_nlink(entry->d_inode);
 		fuse_invalidate_attr(dir);
 		fuse_invalidate_entry_cache(entry);
+                //Nubia FileObserver Begin
+                fuse_post_file_rmdir(dir, entry);
+                //Nubia FileObserver End
 	} else if (err == -EINTR)
 		fuse_invalidate_entry(entry);
 	return err;
@@ -846,6 +866,9 @@ static int fuse_rename_common(struct inode *olddir, struct dentry *oldent,
 			fuse_invalidate_entry_cache(newent);
 			fuse_update_ctime(newent->d_inode);
 		}
+                //Nubia FileObserver Begin
+                fuse_post_file_rename(olddir, oldent, newdir, newent);
+                //Nubia FileObserver End
 	} else if (err == -EINTR) {
 		/* If request was interrupted, DEITY only knows if the
 		   rename actually took place.  If the invalidation
