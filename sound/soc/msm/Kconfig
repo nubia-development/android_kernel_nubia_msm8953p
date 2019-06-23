@@ -302,4 +302,10 @@ config SND_SOC_MDM9640
 	 the machine drivers and the corresponding
 	 DAI-links.
 
+config FEATURE_ZTEMT_AUDIO_EXT_PA
+     tristate "use to enable the external audio PA AW8738"
+	 default n
+     help
+     use to enable the external audio PA AW8738
+
 endmenu
