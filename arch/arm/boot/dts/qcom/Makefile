@@ -355,8 +355,7 @@ dtb-$(CONFIG_ARCH_MSM8909) += msm8909-pm8916-mtp.dtb \
 	apq8009-dragon.dtb
 
 ifeq ($(CONFIG_ARM64),y)
-#always          := $(dtb-y)
-always          := $(NUBIA_DTS_NAME)
+always          := $(dtb-y)
 subdir-y        := $(dts-dirs)
 else
 targets += dtbs
