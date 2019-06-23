@@ -1106,7 +1106,19 @@ static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl)
 {
 	int32_t rc = 0;
 	enum msm_sensor_power_seq_gpio_t gpio;
+	// ZTEMT: yangyikun add for manual AF -----start
+	struct msm_camera_i2c_reg_setting reg_setting;
+	struct msm_camera_i2c_reg_array reg_arry;
 
+	reg_arry.reg_addr = 0x00;
+	reg_arry.reg_data = 0x00;
+	reg_arry.delay = 0 ;
+	reg_setting.addr_type = MSM_CAMERA_I2C_BYTE_ADDR;
+	reg_setting.data_type = MSM_CAMERA_I2C_BYTE_DATA;
+	reg_setting.delay = 0;
+	reg_setting.size = 1;
+	reg_setting.reg_setting = &reg_arry;
+	// ZTEMT: yangyikun add for manual AF -----end
 	CDBG("Enter\n");
 	if (a_ctrl->actuator_state != ACT_DISABLE_STATE) {
 
@@ -1116,7 +1128,16 @@ static int32_t msm_actuator_power_down(struct msm_actuator_ctrl_t *a_ctrl)
 				pr_err("%s:%d Lens park failed.\n",
 					__func__, __LINE__);
 		}
-
+		// ZTEMT: yangyikun add for manual AF -----start
+		rc = a_ctrl->i2c_client.i2c_func_tbl->i2c_write_table_w_microdelay(
+			&a_ctrl->i2c_client, &reg_setting);
+		//pr_err("yikunrc = %d\n", rc);
+		if (rc < 0) {
+		pr_err("%s Failed I2C write Line %d\n",
+				__func__, __LINE__);
+		return rc;
+		}
+		// ZTEMT: yangyikun add for manual AF -----end
 		rc = msm_actuator_vreg_control(a_ctrl, 0);
 		if (rc < 0) {
 			pr_err("%s failed %d\n", __func__, __LINE__);
