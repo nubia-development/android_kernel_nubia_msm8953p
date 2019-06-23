@@ -142,7 +142,11 @@ static int mmc_queue_thread(void *d)
 	struct mmc_queue *mq = d;
 	struct request_queue *q = mq->queue;
 	struct mmc_card *card = mq->card;
+	struct sched_param scheduler_params = {0};
 
+	scheduler_params.sched_priority = 1;
+
+	sched_setscheduler(current, SCHED_FIFO, &scheduler_params);
 	current->flags |= PF_MEMALLOC;
 	if (card->host->wakeup_on_idle)
 		set_wake_up_idle(true);
@@ -163,6 +167,7 @@ static int mmc_queue_thread(void *d)
 			set_current_state(TASK_RUNNING);
 			cmd_flags = req ? req->cmd_flags : 0;
 			mq->issue_fn(mq, req);
+			cond_resched();
 			if (test_bit(MMC_QUEUE_NEW_REQUEST, &mq->flags)) {
 				clear_bit(MMC_QUEUE_NEW_REQUEST, &mq->flags);
 				continue; /* fetch again */
