@@ -1340,10 +1340,18 @@ struct msm_ipc_port *msm_ipc_router_create_raw_port(void *endpoint,
 	INIT_LIST_HEAD(&port_ptr->port_rx_q);
 	mutex_init(&port_ptr->port_rx_q_lock_lhc3);
 	init_waitqueue_head(&port_ptr->port_rx_wait_q);
+#ifdef CONFIG_ZTEMT_POWER_DEBUG
+        snprintf(port_ptr->rx_ws_name, MAX_WS_NAME_SZ,
+		 "ipc%08x_%d_%s",
+		 port_ptr->this_port.port_id,
+		 task_pid_nr(current),
+		 current->comm);
+#else
 	snprintf(port_ptr->rx_ws_name, MAX_WS_NAME_SZ,
 		 "ipc%08x_%s",
 		 port_ptr->this_port.port_id,
 		 current->comm);
+#endif
 	port_ptr->port_rx_ws = wakeup_source_register(port_ptr->rx_ws_name);
 	if (!port_ptr->port_rx_ws) {
 		kfree(port_ptr);
