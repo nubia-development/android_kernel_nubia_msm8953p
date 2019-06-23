@@ -9,7 +9,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-
+//#define DEBUG
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/gpio.h>
@@ -58,6 +58,11 @@ enum btsco_rates {
 	RATE_16KHZ_ID,
 };
 
+#ifdef CONFIG_FEATURE_ZTEMT_AUDIO_EXT_PA
+static int  external_pa_power_ctrl = 9;
+static int external_pa_control_gpio = -1;
+#endif //CONFIG_FEATURE_ZTEMT_AUDIO_EXT_PA
+
 static int msm8952_auxpcm_rate = 8000;
 static int msm_btsco_rate = BTSCO_RATE_8KHZ;
 static int msm_btsco_ch = 1;
@@ -92,14 +97,20 @@ static int msm8952_wsa_switch_event(struct snd_soc_dapm_widget *w,
 static struct wcd_mbhc_config mbhc_cfg = {
 	.read_fw_bin = false,
 	.calibration = NULL,
-	.detect_extn_cable = true,
+	.detect_extn_cable = false,
 	.mono_stero_detection = false,
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = false,
 	.key_code[0] = KEY_MEDIA,
+	#ifdef CONFIG_ZTEMT_AUDIO
+	.key_code[1] = KEY_VOLUMEUP,
+	.key_code[2] = KEY_VOLUMEDOWN,
+	.key_code[3] = KEY_VOICECOMMAND,
+	#else
 	.key_code[1] = KEY_VOICECOMMAND,
 	.key_code[2] = KEY_VOLUMEUP,
 	.key_code[3] = KEY_VOLUMEDOWN,
+	#endif
 	.key_code[4] = 0,
 	.key_code[5] = 0,
 	.key_code[6] = 0,
@@ -264,6 +275,45 @@ int is_ext_spk_gpio_support(struct platform_device *pdev,
 	return 0;
 }
 
+#ifdef CONFIG_FEATURE_ZTEMT_AUDIO_EXT_PA
+bool aw8736_ext_spk_power_amp_on(int value)
+{
+        int curr = 0;
+        int count= 0;
+        int latch = 0;
+        pr_debug("%s liust11 value = %d, gpio = %d\n",__func__, value, external_pa_control_gpio);
+        if (!gpio_is_valid(external_pa_control_gpio)) {
+                pr_err("%s: Invalid gpio: %d\n", __func__, external_pa_control_gpio);
+                return false;
+        }
+        curr = gpio_get_value_cansleep(external_pa_control_gpio);
+        pr_debug("%s: external_pa_control_gpio current value %d\n",__func__, curr);
+        if (curr != value){
+                latch = value;
+                if(value) {
+                        for(count=0;count < external_pa_power_ctrl; count++) {
+                                gpio_direction_output(external_pa_control_gpio, latch);
+                                latch=!latch;
+                        }
+                }
+                else {
+                        gpio_direction_output(external_pa_control_gpio, value);
+                }
+        }
+        curr = gpio_get_value_cansleep(external_pa_control_gpio);
+        pr_debug("%s: external_pa_control_gpio current finish value %d\n",__func__, curr);
+        return true;
+}
+static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
+{
+ pr_err("%s:  liust enter\n",__func__);
+        if (enable)
+                aw8736_ext_spk_power_amp_on(1);
+        else
+                aw8736_ext_spk_power_amp_on(0);
+        return 0;
+}
+#else
 static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 {
 	struct snd_soc_card *card = codec->component.card;
@@ -298,6 +348,25 @@ static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 	}
 	return 0;
 }
+#endif
+#ifdef CONFIG_FEATURE_ZTEMT_AUDIO_EXT_PA
+int aw_ext_pa_init(struct platform_device *pdev,
+                struct msm8916_asoc_mach_data *pdata)
+{
+        external_pa_control_gpio = of_get_named_gpio(pdev->dev.of_node,
+                                        "qcom,cdc-ext-amp-gpios", 0);
+        if(external_pa_control_gpio < 0) {
+                dev_err(&pdev->dev,"property %s in node %s not found %d\n",
+                                "qcom,cdc-ext-amp-gpios", pdev->dev.of_node->full_name,
+                                external_pa_control_gpio);
+        }
+        if(gpio_request(external_pa_control_gpio,"ext_pa_ctrl_pin")){
+                pr_err("%s: ext pa control gpio request failed\n",__func__);
+        }
+        aw8736_ext_spk_power_amp_on(0);
+        return 0;
+}
+#endif
 
 /* Validate whether US EU switch is present or not */
 int is_us_eu_switch_gpio_support(struct platform_device *pdev,
@@ -1631,6 +1700,18 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 	 * 210-290 == Button 2
 	 * 360-680 == Button 3
 	 */
+	#ifdef CONFIG_ZTEMT_AUDIO
+	btn_low[0] =100;
+	btn_high[0] = 100;
+	btn_low[1] = 250;
+	btn_high[1] = 250;
+	btn_low[2] = 450;
+	btn_high[2] = 450;
+	btn_low[3] = 450;
+	btn_high[3] = 450;
+	btn_low[4] = 450;
+	btn_high[4] = 450;
+	#else
 	btn_low[0] = 75;
 	btn_high[0] = 75;
 	btn_low[1] = 150;
@@ -1641,6 +1722,7 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 	btn_high[3] = 450;
 	btn_low[4] = 500;
 	btn_high[4] = 500;
+	#endif
 
 	return msm8952_wcd_cal;
 }
@@ -1665,7 +1747,9 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "Secondary Mic");
 	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic1");
 	snd_soc_dapm_ignore_suspend(dapm, "Digital Mic2");
-
+#ifdef CONFIG_FEATURE_ZTEMT_AUDIO_EXT_PA
+	snd_soc_dapm_ignore_suspend(dapm, "EXT SPK PA");
+#endif
 	snd_soc_dapm_ignore_suspend(dapm, "EAR");
 	snd_soc_dapm_ignore_suspend(dapm, "HEADPHONE");
 	snd_soc_dapm_ignore_suspend(dapm, "SPK_OUT");
@@ -3266,6 +3350,9 @@ parse_mclk_freq:
 		goto err;
 	}
 
+#ifdef CONFIG_FEATURE_ZTEMT_AUDIO_EXT_PA
+    ret = aw_ext_pa_init(pdev, pdata);
+#endif
 	ret = is_ext_spk_gpio_support(pdev, pdata);
 	if (ret < 0)
 		pr_err("%s:  doesn't support external speaker pa\n",

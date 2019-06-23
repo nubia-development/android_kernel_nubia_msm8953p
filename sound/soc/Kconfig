@@ -63,5 +63,11 @@ source "sound/soc/codecs/Kconfig"
 # generic frame-work
 source "sound/soc/generic/Kconfig"
 
+config ZTEMT_AUDIO
+       bool "AUDIO MACRO for the same info for NX612 project"
+       default n
+       help
+       AUDIO MACRO for NUBIA NX612 series
+
 endif	# SND_SOC
 

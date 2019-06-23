@@ -9,6 +9,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
+//#define DEBUG
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
@@ -42,18 +43,26 @@
 #define OCP_ATTEMPT 1
 #define HS_DETECT_PLUG_TIME_MS (3 * 1000)
 #define SPECIAL_HS_DETECT_TIME_MS (2 * 1000)
+#ifdef CONFIG_ZTEMT_AUDIO
+#define MBHC_BUTTON_PRESS_THRESHOLD_MIN 800
+#else
 #define MBHC_BUTTON_PRESS_THRESHOLD_MIN 250
+#endif
 #define GND_MIC_SWAP_THRESHOLD 4
 #define WCD_FAKE_REMOVAL_MIN_PERIOD_MS 100
+#ifdef CONFIG_ZTEMT_AUDIO
+#define HS_VREF_MIN_VAL 1300
+#else
 #define HS_VREF_MIN_VAL 1400
+#endif
 #define FW_READ_ATTEMPTS 15
 #define FW_READ_TIMEOUT 4000000
 #define FAKE_REM_RETRY_ATTEMPTS 3
 #define MAX_IMPED 60000
 
-#define WCD_MBHC_BTN_PRESS_COMPL_TIMEOUT_MS  50
+#define WCD_MBHC_BTN_PRESS_COMPL_TIMEOUT_MS  10
 #define ANC_DETECT_RETRY_CNT 7
-#define WCD_MBHC_SPL_HS_CNT  2
+#define WCD_MBHC_SPL_HS_CNT  1
 
 static int det_extn_cable_en;
 module_param(det_extn_cable_en, int,
@@ -674,7 +683,11 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			mbhc->current_plug = MBHC_PLUG_TYPE_HEADSET;
 			mbhc->jiffies_atreport = jiffies;
 		} else if (jack_type == SND_JACK_LINEOUT) {
+		    #ifdef CONFIG_ZTEMT_AUDIO
+			mbhc->current_plug = MBHC_PLUG_TYPE_HEADSET;
+			#else
 			mbhc->current_plug = MBHC_PLUG_TYPE_HIGH_HPH;
+			#endif
 		} else if (jack_type == SND_JACK_ANC_HEADPHONE)
 			mbhc->current_plug = MBHC_PLUG_TYPE_ANC_HEADPHONE;
 
@@ -943,7 +956,11 @@ static int wcd_check_cross_conn(struct wcd_mbhc *mbhc)
 	}
 
 
+#ifdef CONFIG_ZTEMT_AUDIO  // not support EURO headset
+	return false;
+#else
 	return (plug_type == MBHC_PLUG_TYPE_GND_MIC_SWAP) ? true : false;
+#endif
 }
 
 static bool wcd_is_special_headset(struct wcd_mbhc *mbhc)
@@ -1192,7 +1209,10 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 
 	WCD_MBHC_REG_READ(WCD_MBHC_BTN_RESULT, btn_result);
 	WCD_MBHC_REG_READ(WCD_MBHC_HS_COMP_RESULT, hs_comp_res);
-
+	pr_debug("%s btn_result is  %d\n", __func__,btn_result);
+	pr_debug("%s hs_comp_res is %d\n", __func__,hs_comp_res);
+	pr_debug("%s rc is %d\n", __func__,rc);
+    rc = 0;
 	if (!rc) {
 		pr_debug("%s No btn press interrupt\n", __func__);
 		if (!btn_result && !hs_comp_res)
@@ -1410,6 +1430,10 @@ correct_plug_type:
 			goto report;
 		}
 	}
+	#ifdef CONFIG_ZTEMT_AUDIO
+	if (plug_type == MBHC_PLUG_TYPE_HIGH_HPH)
+		plug_type = MBHC_PLUG_TYPE_HEADSET;
+	#endif
 
 report:
 	if (wcd_swch_level_remove(mbhc)) {
@@ -2133,7 +2157,7 @@ static int wcd_mbhc_initialise(struct wcd_mbhc *mbhc)
 	/* Insertion debounce set to 96ms */
 	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_INSREM_DBNC, 6);
 	/* Button Debounce set to 16ms */
-	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_BTN_DBNC, 2);
+	WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_BTN_DBNC, 3);
 
 	/* Enable micbias ramp */
 	if (mbhc->mbhc_cb->mbhc_micb_ramp_control)
