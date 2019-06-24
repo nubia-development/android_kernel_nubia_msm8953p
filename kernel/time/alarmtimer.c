@@ -129,7 +129,6 @@ void power_on_alarm_init(void)
 		alarm_start(&init_alarm, alarm_ktime);
 	}
 }
-
 static void alarmtimer_triggered_func(void *p)
 {
 	struct rtc_device *rtc = rtcdev;
