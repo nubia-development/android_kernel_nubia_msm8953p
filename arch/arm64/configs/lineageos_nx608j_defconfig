@@ -33,7 +33,12 @@ CONFIG_MODULE_FORCE_UNLOAD=y
 CONFIG_MODVERSIONS=y
 CONFIG_PARTITION_ADVANCED=y
 CONFIG_ARCH_MSM=y
+CONFIG_ARCH_MSM8916=y
+CONFIG_ARCH_MSM8940=y
 CONFIG_ARCH_MSM8953=y
+CONFIG_ARCH_SDM450=y
+CONFIG_ARCH_MSM8937=y
+CONFIG_ARCH_MSMCOBALT=y
 CONFIG_PCI_MSM=y
 CONFIG_SMP=y
 CONFIG_SCHED_MC=y
@@ -678,6 +683,7 @@ CONFIG_NUBIA_SENSORS_TMD2725=y
 #CONFIG_NUBIA_SENSORS_HALL_DEVICE=y
 CONFIG_FEATURE_NUBIA_SENSORS_LOG_ON=y
 #larks add for keyreset
+CONFIG_NUBIA_INPUT_KEYRESET=y
 #nubia end
 #config led for auto flashed
 CONFIG_NUBIA_DOUBLE_COLOR_NO_LPG=y
@@ -701,15 +707,22 @@ CONFIG_CPU_BOOST=y
 #add for f2fs
 CONFIG_F2FS_FS=y
 
-#-CONFIG_HAVE_DMA_API_DEBUG=y (disable via Kconfig)
+
+#close following configs by diff
+
+#close following config by default(you should open them for debug version)
+#-CONFIG_HAVE_DMA_API_DEBUG=y (disable via arch/arm64/Kconfig)
+#-CONFIG_HAVE_DEBUG_KMEMLEAK=y (disable via arch/arm64/Kconfig)
+#-CONFIG_HAVE_DEBUG_BUGVERBOSE=y(disable via arch/arm64/Kconfig)
 #-CONFIG_REGMAP_ALLOW_WRITE_DEBUGFS=y(it is enabled by CONFIG_WCD9335_CODEC, you can disable it via drivers/mfd/Kconfig)
-#-CONFIG_USB_GADGET_DEBUG_FILES=y(disable it will lead to build error)
-#-CONFIG_HAVE_DEBUG_KMEMLEAK=y (disable via Kconfig)
-#-CONFIG_DEBUG_PREEMPT=y(diable it via lib/Kconfig.debug, )
-#-CONFIG_HAVE_DEBUG_BUGVERBOSE=y(disable via Kconfig)
+#-CONFIG_ZTEMT_POWER_DEBUG=y(disable it via drivers/power/Kconfig)
+#-CONFIG_DEBUG_PREEMPT=y(diable it via lib/Kconfig.debug)
+#-CONFIG_DEBUG_KERNEL=y(disable it via init/Kconfig)
+
+#you should not close following config
+#-CONFIG_DEBUG_FS=y(it is relevant to debug file system, and systrace will use it, you shoul enable it)
 #-CONFIG_DEBUG_BUGVERBOSE=y(diable it via lib/Kconfig.debug. but it is useful for panic, you shoule enable it)
-#-CONFIG_DEBUG_FS=y(it is relevant to debug file system, you shoul enable it)
-#-CONFIG_DEBUG_KERNEL=y(it is just a switcher, it enable nothing) 
+#-CONFIG_USB_GADGET_DEBUG_FILES=y(disable it will lead to build error)
 
 # Add by Cyborg2017(Cyborg Yang)
 CONFIG_MACH_NUBIA_NX608J=y
