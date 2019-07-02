@@ -17,7 +17,6 @@
 #include "msm-pmi8950.dtsi"
 #include "msm8953-mtp.dtsi"
 #include "msm8953-pmi8950.dtsi"
-#include "nubia/NX612J/head.dtsi"
 //#include "msm8953-camera-sensor-mtp.dtsi"   //delete by ZTEMT kangxiong to include Nubia camera dts
 
 / {
@@ -73,3 +72,4 @@
       // qcom,external-typec;
       // qcom,typec-psy-name = "typec";
 };
+#include "nubia/NX612J/head.dtsi"
